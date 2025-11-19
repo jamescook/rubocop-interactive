@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'tempfile'
 require 'diff/lcs'
+require_relative 'temp_file'
 
 module RubocopInteractive
   # Generates a preview patch for an offense without applying it
@@ -13,18 +13,15 @@ module RubocopInteractive
 
       original_content = File.read(offense.file_path)
 
-      # Create temp file and run rubocop autocorrect on it
-      temp = Tempfile.new(['rubocop', '.rb'])
+      # Create temp file in project dir for rubocop server compatibility
+      temp_path = TempFile.create(original_content)
       begin
-        temp.write(original_content)
-        temp.close
-
         system(
-          'rubocop', '--autocorrect', '--only', offense.cop_name, temp.path,
+          'rubocop', '--server', '--autocorrect', '--only', offense.cop_name, temp_path,
           out: File::NULL, err: File::NULL
         )
 
-        corrected_content = File.read(temp.path)
+        corrected_content = File.read(temp_path)
 
         return nil if original_content == corrected_content
 
@@ -37,7 +34,7 @@ module RubocopInteractive
 
         { lines: hunk[:lines], start_line: hunk[:start] }
       ensure
-        temp.unlink
+        TempFile.delete(temp_path)
       end
     end
 

@@ -15,15 +15,6 @@ class ActionsTest < Minitest::Test
     }
   end
 
-  def test_skip_returns_skipped
-    offense = RubocopInteractive::Offense.new(file_path: 'test.rb', data: @offense_data)
-    server = FakeServer.new
-
-    result = RubocopInteractive::Actions.perform(:skip, offense, server: server)
-
-    assert_equal :skipped, result
-  end
-
   def test_autocorrect_fixes_only_target_offense
     with_temp_fixture do |dir|
       file_path = File.join(dir, 'bad_code.rb')

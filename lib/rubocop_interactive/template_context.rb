@@ -7,7 +7,7 @@ module RubocopInteractive
   class TemplateContext
     attr_accessor :total_offenses, :offense_number, :cop_name, :message,
                   :file_path, :line, :column, :patch_lines, :patch_start_line,
-                  :correctable, :available_actions, :state
+                  :correctable, :available_actions, :state, :active
 
     def initialize(attrs = {})
       attrs.each { |k, v| send("#{k}=", v) }
@@ -179,29 +179,10 @@ module RubocopInteractive
     public
 
     # Helper: render command palette
-    def prompt(cursor: "\u2588", blink: true)
+    def prompt
       options = build_prompt_options
-      cursor_str = format_cursor(cursor, blink: blink)
-      "#{options.join(' ')} #{cursor_str} "
+      "#{options.join(' ')} "
     end
-
-    # Helper: format cursor with optional blink
-    def cursor(char: "\u2588", blink: true)
-      format_cursor(char, blink: blink)
-    end
-
-    private
-
-    def format_cursor(char, blink: true)
-      return char unless $stdout.tty?
-
-      hide_cursor = "\e[?25l"  # Hide terminal cursor
-      # Note: ANSI blink (\e[5m) is ignored by most modern terminals
-      # so we just show a static cursor
-      "#{hide_cursor}#{char}"
-    end
-
-    public
 
     # Helper: colored text
     def color(text, color_name, bold: false)
@@ -230,7 +211,6 @@ module RubocopInteractive
       case state
       when :corrected then Color.green('[CORRECTED]')
       when :disabled then Color.yellow('[DISABLED]')
-      when :skipped then Color.dim('[SKIPPED]')
       else ''
       end
     end

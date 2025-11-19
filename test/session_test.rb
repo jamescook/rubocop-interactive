@@ -16,16 +16,23 @@ class SessionTest < Minitest::Test
   end
 
   def test_runs_through_all_offenses
-    responses = Array.new(17, :skip)
+    # Use disable_line to progress through all offenses (actions increment index)
+    responses = Array.new(17, :disable_line)
     ui = FakeUI.new(responses: responses)
     server = FakeServer.new
 
-    session = RubocopInteractive::Session.new(fixture_json, ui: ui, server: server)
-    stats = session.run
+    with_temp_fixture do |dir|
+      json_data = JSON.parse(fixture_json)
+      json_data['files'].each do |file|
+        file['path'] = File.join(dir, File.basename(file['path']))
+      end
 
-    assert_equal 17, ui.prompts_shown
-    assert_equal 17, stats[:skipped]
-    assert_equal 0, stats[:corrected]
+      session = RubocopInteractive::Session.new(json_data, ui: ui, server: server)
+      stats = session.run
+
+      assert_equal 17, ui.prompts_shown
+      assert_equal 17, stats[:disabled]
+    end
   end
 
   def test_tracks_autocorrect_stats
@@ -44,8 +51,6 @@ class SessionTest < Minitest::Test
       stats = session.run
 
       assert_equal 2, stats[:corrected]
-      # After corrections, file is re-scanned so remaining count may differ
-      assert stats[:skipped] >= 0
     end
   end
 
@@ -58,6 +63,5 @@ class SessionTest < Minitest::Test
     stats = session.run
 
     assert_equal 3, ui.prompts_shown  # Only 3 prompts before quit
-    assert_equal 2, stats[:skipped]
   end
 end

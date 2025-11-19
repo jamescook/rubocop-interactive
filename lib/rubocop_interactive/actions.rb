@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'tempfile'
 require 'diff/lcs'
+require_relative 'temp_file'
 
 module RubocopInteractive
   # Performs actions on offenses (autocorrect, skip, disable)
@@ -12,8 +12,6 @@ module RubocopInteractive
       case action
       when :autocorrect
         autocorrect(offense)
-      when :skip
-        :skipped
       when :disable_line
         disable_line(offense)
       when :disable_file
@@ -21,25 +19,22 @@ module RubocopInteractive
       when :quit
         :quit
       else
-        :skipped
+        nil
       end
     end
 
     def autocorrect(offense)
       original_content = File.read(offense.file_path)
 
-      # Create temp file and run rubocop autocorrect on it
-      temp = Tempfile.new(['rubocop', '.rb'])
+      # Create temp file in project dir for rubocop server compatibility
+      temp_path = TempFile.create(original_content)
       begin
-        temp.write(original_content)
-        temp.close
-
         system(
-          'rubocop', '--autocorrect', '--only', offense.cop_name, temp.path,
+          'rubocop', '--server', '--autocorrect', '--only', offense.cop_name, temp_path,
           out: File::NULL, err: File::NULL
         )
 
-        corrected_content = File.read(temp.path)
+        corrected_content = File.read(temp_path)
 
         # Apply only the hunk that affects our offense line
         result = apply_surgical_correction(
@@ -55,7 +50,7 @@ module RubocopInteractive
           :skipped # No applicable correction found
         end
       ensure
-        temp.unlink
+        TempFile.delete(temp_path)
       end
     end
 

@@ -52,12 +52,6 @@ class TemplateContextTest < Minitest::Test
     assert_includes prompt, '[a]pply'
     assert_includes prompt, '[s]kip'
     assert_includes prompt, '[q]uit'
-    assert_includes prompt, '>'
-  end
-
-  def test_prompt_helper_custom_cursor
-    prompt = @context.prompt(cursor: '$')
-    assert_includes prompt, '$ '
   end
 
   def test_state_indicator_pending
@@ -73,11 +67,6 @@ class TemplateContextTest < Minitest::Test
   def test_state_indicator_disabled
     @context.state = :disabled
     assert_includes @context.state_indicator, '[DISABLED]'
-  end
-
-  def test_state_indicator_skipped
-    @context.state = :skipped
-    assert_includes @context.state_indicator, '[SKIPPED]'
   end
 
   def test_patch_inline_merge

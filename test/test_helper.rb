@@ -50,6 +50,10 @@ class FakeUI
   def show_stats(_stats)
     # no-op
   end
+
+  def beep
+    # no-op
+  end
 end
 
 # Fake Server for testing

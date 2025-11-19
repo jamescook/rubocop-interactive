@@ -9,8 +9,8 @@ module RubocopInteractive
       @ui = ui
       @server = server
       @all_offenses = parse_all_offenses(json)
-      @offense_states = {}  # offense.object_id => :pending/:corrected/:skipped/:disabled
-      @stats = { corrected: 0, skipped: 0, disabled: 0 }
+      @offense_states = {}  # offense.object_id => :pending/:corrected/:disabled
+      @stats = { corrected: 0, disabled: 0 }
     end
 
     def offenses
@@ -22,33 +22,61 @@ module RubocopInteractive
       @ui.show_summary(total: total)
 
       index = 0
+      needs_redraw = true
       while index >= 0 && index < @all_offenses.size
         offense = @all_offenses[index]
         state = @offense_states[offense.object_id] || :pending
 
-        @ui.show_offense(offense, index: index, total: total, state: state)
+        if needs_redraw
+          @ui.show_offense(offense, index: index, total: total, state: state)
+        end
+        needs_redraw = true
 
         action = @ui.prompt_for_action(offense, state: state)
 
+        # Navigation (arrow keys) - stop at boundaries, don't exit
         case action
         when :prev
-          index = index - 1
-          index = @all_offenses.size - 1 if index < 0  # Wrap to end
+          if index == 0
+            @ui.beep
+            needs_redraw = false
+          else
+            index -= 1
+          end
           next
         when :next
-          index = index + 1
-          index = 0 if index >= @all_offenses.size  # Wrap to start
+          if index >= @all_offenses.size - 1
+            @ui.beep
+            needs_redraw = false
+          else
+            index += 1
+          end
           next
         when :quit
           @ui.show_stats(@stats)
           return @stats
+        when :skip
+          # Skip is an action - exits on last offense
+          if index >= @all_offenses.size - 1
+            @ui.show_stats(@stats)
+            return @stats
+          end
+          index += 1
+          next
         end
 
+        # Other actions (autocorrect, disable)
         result = Actions.perform(action, offense, server: @server)
-        track_result(result)
-        @offense_states[offense.object_id] = result if result != :skipped || state == :pending
+        if result
+          track_result(result)
+          @offense_states[offense.object_id] = result
+        end
 
-        # Move to next offense after action (unless already at end)
+        # Exit on last offense, otherwise move to next
+        if index >= @all_offenses.size - 1
+          @ui.show_stats(@stats)
+          return @stats
+        end
         index += 1
       end
 
@@ -74,7 +102,6 @@ module RubocopInteractive
     def track_result(result)
       case result
       when :corrected then @stats[:corrected] += 1
-      when :skipped then @stats[:skipped] += 1
       when :disabled then @stats[:disabled] += 1
       end
     end

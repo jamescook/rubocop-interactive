@@ -7,7 +7,7 @@ module RubocopInteractive
   class UI
     ACTIONS = {
       'a' => :autocorrect,
-      's' => :skip,
+      's' => :skip,  # Skip moves to next, exits on last
       'd' => :disable_line,
       'D' => :disable_file,
       'q' => :quit,
@@ -64,7 +64,6 @@ module RubocopInteractive
 
         # Handle navigation (arrow keys return symbols)
         if input == :prev || input == :next
-          puts  # Move to new line
           return input
         end
 
@@ -88,7 +87,7 @@ module RubocopInteractive
         end
 
         if action
-          puts  # Move to new line after valid action
+          print "#{input}\n"  # Echo the keypress and move to new line
           return action
         end
 
@@ -98,20 +97,18 @@ module RubocopInteractive
     end
 
     def show_stats(stats)
-      restore_cursor
       puts
       puts '-' * 40
       puts 'Summary:'
       puts "  Corrected: #{stats[:corrected]}"
-      puts "  Skipped:   #{stats[:skipped]}"
       puts "  Disabled:  #{stats[:disabled]}"
     end
 
-    private
-
-    def restore_cursor
-      print "\e[?25h"  # Show terminal cursor again
+    def beep
+      print "\a"  # Terminal bell
     end
+
+    private
 
     def puts(msg = '')
       @output.puts(msg)
