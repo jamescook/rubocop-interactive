@@ -1,0 +1,13 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require_relative '../lib/rubocop_interactive'
+
+json = $stdin.read
+
+if json.empty?
+  warn 'Usage: rubocop --format json | rubocop-interactive'
+  exit 1
+end
+
+RubocopInteractive.start!(json)
