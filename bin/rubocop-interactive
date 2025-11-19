@@ -1,6 +1,15 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
+# Use project's bundled gems if available (respects Gemfile.lock versions)
+begin
+  require 'bundler/setup'
+rescue LoadError
+  # Bundler not available, use system gems
+rescue Bundler::GemfileNotFound
+  # No Gemfile in project, use system gems
+end
+
 require 'optparse'
 require_relative '../lib/rubocop_interactive'
 

@@ -6,8 +6,8 @@ module RubocopInteractive
   # Provides context and helpers for ERB templates
   class TemplateContext
     attr_accessor :total_offenses, :offense_number, :cop_name, :message,
-                  :file_path, :line, :column, :patch_lines, :patch_start_line,
-                  :correctable, :available_actions, :state, :active
+                  :file_path, :line, :column, :length, :patch_lines, :patch_start_line,
+                  :correctable, :safe_autocorrect, :available_actions, :state, :active
 
     def initialize(attrs = {})
       attrs.each { |k, v| send("#{k}=", v) }
@@ -203,7 +203,7 @@ module RubocopInteractive
     def italic(text)
       return text unless $stdout.tty?
 
-      "\e[3m#{text}\e[0m"
+      "#{ANSI::ITALIC}#{text}#{ANSI::RESET}"
     end
 
     # Helper: state indicator for offense
@@ -215,13 +215,35 @@ module RubocopInteractive
       end
     end
 
+    # Helper: show the offense line with caret indicator below
+    def offense_highlight
+      return '' unless file_path && File.exist?(file_path)
+
+      lines = File.readlines(file_path)
+      return '' if line > lines.size
+
+      source_line = lines[line - 1].chomp
+
+      # Build caret indicator
+      caret_length = length || 1
+      caret_col = column || 1
+      caret_line = ' ' * (caret_col - 1) + Color.yellow('^' * caret_length)
+
+      "#{source_line}\n#{caret_line}"
+    end
+
     private
 
     def build_prompt_options
       options = []
 
       if correctable && state == :pending
-        options << '[a]pply'
+        if safe_autocorrect
+          options << '[a]pply'
+        else
+          options << Color.yellow('[A]pply unsafe')
+        end
+        options << '[p]atch'
       end
 
       options << '[s]kip'

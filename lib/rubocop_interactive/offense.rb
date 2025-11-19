@@ -21,6 +21,12 @@ module RubocopInteractive
       @correctable
     end
 
+    def safe_autocorrect?
+      return false unless correctable?
+
+      CopConfig.safe_autocorrect?(cop_name)
+    end
+
     def location
       "#{file_path}:#{line}:#{column}"
     end

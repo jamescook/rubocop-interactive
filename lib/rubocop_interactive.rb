@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
 require 'json'
+require_relative 'rubocop_interactive/ansi'
 require_relative 'rubocop_interactive/color'
+require_relative 'rubocop_interactive/cop_config'
 require_relative 'rubocop_interactive/offense'
 require_relative 'rubocop_interactive/session'
 require_relative 'rubocop_interactive/actions'

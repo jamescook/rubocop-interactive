@@ -3,8 +3,10 @@
 module RubocopInteractive
   # Terminal color support with ANSI and X11 color names
   module Color
+    include ANSI
+
     # Basic ANSI colors (foreground)
-    ANSI = {
+    ANSI_COLORS = {
       black: 30, red: 31, green: 32, yellow: 33,
       blue: 34, magenta: 35, cyan: 36, white: 37
     }.freeze
@@ -159,7 +161,7 @@ module RubocopInteractive
         return text unless code
 
         bold_prefix = bold ? '1;' : ''
-        "\e[#{bold_prefix}#{code}m#{text}\e[0m"
+        "\e[#{bold_prefix}#{code}m#{text}#{ANSI::RESET}"
       end
 
       # Convenience methods
@@ -190,13 +192,13 @@ module RubocopInteractive
       def bold(text)
         return text unless $stdout.tty?
 
-        "\e[1m#{text}\e[0m"
+        "#{ANSI::BOLD}#{text}#{ANSI::RESET}"
       end
 
       def dim(text)
         return text unless $stdout.tty?
 
-        "\e[2m#{text}\e[0m"
+        "#{ANSI::DIM}#{text}#{ANSI::RESET}"
       end
 
       private
@@ -205,7 +207,7 @@ module RubocopInteractive
         color = color.to_sym
 
         # Check basic ANSI first
-        return ANSI[color] if ANSI.key?(color)
+        return ANSI_COLORS[color] if ANSI_COLORS.key?(color)
 
         # Check X11 colors
         if X11.key?(color)

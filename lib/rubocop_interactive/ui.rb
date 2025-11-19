@@ -6,20 +6,16 @@ module RubocopInteractive
   # Handles terminal UI - can be replaced with a mock for testing
   class UI
     ACTIONS = {
-      'a' => :autocorrect,
+      'a' => :autocorrect_safe,
+      'A' => :autocorrect_unsafe,
       's' => :skip,  # Skip moves to next, exits on last
       'd' => :disable_line,
       'D' => :disable_file,
+      'p' => :show_patch,
       'q' => :quit,
       '?' => :help,
       "\u0003" => :interrupt  # Ctrl+C
     }.freeze
-
-    # Arrow key escape sequences
-    ARROW_LEFT = "\e[D"
-    ARROW_RIGHT = "\e[C"
-    ARROW_UP = "\e[A"
-    ARROW_DOWN = "\e[B"
 
     def initialize(input: nil, output: $stdout, confirm_patch: false, template: 'default')
       # Use TTY for input when stdin is a pipe
@@ -105,7 +101,38 @@ module RubocopInteractive
     end
 
     def beep
-      print "\a"  # Terminal bell
+      print ANSI::BELL
+    end
+
+    def show_unsafe_error
+      # Clear line and show error - will be cleared on next prompt
+      clear_line
+      print Color.yellow("Press 'A' (capital) for unsafe autocorrect")
+      beep
+    end
+
+    def show_patch(offense)
+      return unless offense.correctable?
+
+      patch_data = PatchGenerator.generate(offense)
+      return unless patch_data
+
+      # Build a context just for rendering the patch
+      context = TemplateContext.new(
+        patch_lines: patch_data[:lines].lines,
+        patch_start_line: patch_data[:start_line]
+      )
+
+      puts
+      puts context.patch(
+        old_color: :red,
+        new_color: :green,
+        context_color: :dim,
+        inline: true,
+        merge: true,
+        show_spaces: '█',
+        line_numbers: true
+      )
     end
 
     private
@@ -126,8 +153,8 @@ module RubocopInteractive
         # Read the rest of the escape sequence
         seq = char + @input.getch + @input.getch
         case seq
-        when ARROW_LEFT, ARROW_UP then return :prev
-        when ARROW_RIGHT, ARROW_DOWN then return :next
+        when ANSI::ARROW_LEFT, ANSI::ARROW_UP then return :prev
+        when ANSI::ARROW_RIGHT, ANSI::ARROW_DOWN then return :next
         else return seq
         end
       end
@@ -136,8 +163,7 @@ module RubocopInteractive
     end
 
     def clear_line
-      # Move cursor to beginning of line and clear it
-      print "\r\e[K"
+      print ANSI::CLEAR_LINE
     end
 
     def build_default_prompt(offense, state: :pending)
@@ -170,23 +196,6 @@ module RubocopInteractive
     end
 
     def build_template_context(offense, index:, total:, state: :pending)
-      patch_lines = nil
-      patch_start_line = nil
-
-      if @confirm_patch && offense.correctable?
-        patch_data = PatchGenerator.generate(offense)
-        if patch_data
-          patch_lines = patch_data[:lines].lines
-          patch_start_line = patch_data[:start_line]
-        else
-          patch_lines = build_code_context_lines(offense)
-          patch_start_line = [offense.line - 1, 1].max
-        end
-      else
-        patch_lines = build_code_context_lines(offense)
-        patch_start_line = [offense.line - 1, 1].max
-      end
-
       TemplateContext.new(
         total_offenses: total,
         offense_number: index + 1,
@@ -195,10 +204,10 @@ module RubocopInteractive
         file_path: offense.file_path,
         line: offense.line,
         column: offense.column,
+        length: offense.length,
         correctable: state == :pending && offense.correctable?,
-        state: state,
-        patch_lines: patch_lines,
-        patch_start_line: patch_start_line
+        safe_autocorrect: offense.safe_autocorrect?,
+        state: state
       )
     end
 
