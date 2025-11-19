@@ -1,7 +1,38 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
+require 'optparse'
 require_relative '../lib/rubocop_interactive'
+
+# Handle Ctrl+C gracefully - twice in quick succession exits
+last_interrupt = nil
+trap('INT') do
+  if last_interrupt && (Time.now - last_interrupt) < 1.0
+    puts "\nExiting..."
+    exit 0
+  else
+    last_interrupt = Time.now
+    puts "\nPress Ctrl+C again to exit"
+  end
+end
+
+options = {}
+OptionParser.new do |opts|
+  opts.banner = 'Usage: rubocop --format json | rubocop-interactive [options]'
+
+  opts.on('--confirm-patch', 'Show patch preview before applying corrections') do
+    options[:confirm_patch] = true
+  end
+
+  opts.on('--template NAME', 'Use a specific template (default, compact, or path to .erb)') do |name|
+    options[:template] = name
+  end
+
+  opts.on('-h', '--help', 'Show this help') do
+    puts opts
+    exit
+  end
+end.parse!
 
 json = $stdin.read
 
@@ -10,4 +41,4 @@ if json.empty?
   exit 1
 end
 
-RubocopInteractive.start!(json)
+RubocopInteractive.start!(json, **options)

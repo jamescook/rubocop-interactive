@@ -38,11 +38,11 @@ class FakeUI
     # no-op
   end
 
-  def show_offense(offense, index:, total:)
+  def show_offense(offense, index:, total:, state: :pending)
     @offenses_shown << offense
   end
 
-  def prompt_for_action(_offense)
+  def prompt_for_action(_offense, state: :pending)
     @prompts_shown += 1
     @responses.shift || :skip
   end

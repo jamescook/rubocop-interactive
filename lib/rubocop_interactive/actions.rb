@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'tempfile'
-require 'diffy'
+require 'diff/lcs'
 
 module RubocopInteractive
   # Performs actions on offenses (autocorrect, skip, disable)
@@ -62,26 +62,57 @@ module RubocopInteractive
     def apply_surgical_correction(original, corrected, target_line)
       return original if original == corrected
 
-      diff = Diffy::Diff.new(original, corrected, context: 0, include_diff_info: true)
-      diff_text = diff.to_s
-
-      hunks = parse_hunks(diff_text)
       original_lines = original.lines
+      corrected_lines = corrected.lines
 
+      diffs = Diff::LCS.sdiff(original_lines, corrected_lines)
+
+      # Group consecutive changes into hunks
+      hunks = []
+      current_hunk = { start: nil, old_lines: [], new_lines: [] }
+
+      diffs.each do |change|
+        old_pos = change.old_position ? change.old_position + 1 : nil
+
+        case change.action
+        when '='
+          # Close current hunk if any
+          if current_hunk[:start]
+            hunks << current_hunk
+            current_hunk = { start: nil, old_lines: [], new_lines: [] }
+          end
+        when '!', '-', '+'
+          # Start new hunk if needed
+          current_hunk[:start] ||= old_pos || 1
+
+          case change.action
+          when '!'
+            current_hunk[:old_lines] << change.old_element
+            current_hunk[:new_lines] << change.new_element
+          when '-'
+            current_hunk[:old_lines] << change.old_element
+          when '+'
+            current_hunk[:new_lines] << change.new_element
+          end
+        end
+      end
+
+      # Don't forget last hunk
+      hunks << current_hunk if current_hunk[:start]
+
+      # Find hunk that contains target line
       hunks.each do |hunk|
-        # Check if this hunk affects our target line
-        hunk_start = hunk[:old_start]
-        hunk_end = hunk[:old_start] + hunk[:old_count] - 1
-        hunk_end = hunk_start if hunk[:old_count] == 0
+        hunk_start = hunk[:start]
+        hunk_end = hunk_start + hunk[:old_lines].size - 1
+        hunk_end = hunk_start if hunk[:old_lines].empty?
 
         next unless target_line >= hunk_start && target_line <= hunk_end
 
         # Apply this hunk
         result_lines = original_lines.dup
-        start_index = hunk[:old_start] - 1
-        delete_count = hunk[:old_count]
+        start_index = hunk_start - 1
+        delete_count = hunk[:old_lines].size
 
-        # Remove old lines, insert new lines
         result_lines.slice!(start_index, delete_count)
         hunk[:new_lines].each_with_index do |line, i|
           result_lines.insert(start_index + i, line)
@@ -91,43 +122,6 @@ module RubocopInteractive
       end
 
       nil # No hunk matched target line
-    end
-
-    def parse_hunks(diff_text)
-      hunks = []
-      current_hunk = nil
-
-      diff_text.each_line do |line|
-        if line.start_with?('@@')
-          # Save previous hunk
-          hunks << current_hunk if current_hunk
-
-          # Parse header: @@ -start,count +start,count @@ or @@ -start +start @@
-          match = line.match(/@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/)
-          next unless match
-
-          current_hunk = {
-            old_start: match[1].to_i,
-            old_count: (match[2] || 1).to_i,
-            new_start: match[3].to_i,
-            new_count: (match[4] || 1).to_i,
-            new_lines: []
-          }
-        elsif current_hunk
-          # Collect new lines (+ lines)
-          if line.start_with?('+') && !line.start_with?('+++')
-            current_hunk[:new_lines] << line[1..]
-          elsif line.start_with?(' ')
-            current_hunk[:new_lines] << line[1..]
-          end
-          # Skip - lines (they're being removed)
-        end
-      end
-
-      # Don't forget last hunk
-      hunks << current_hunk if current_hunk
-
-      hunks
     end
 
     def disable_line(offense)

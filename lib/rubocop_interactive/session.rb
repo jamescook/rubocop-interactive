@@ -8,42 +8,48 @@ module RubocopInteractive
     def initialize(json, ui: UI.new, server: Server.new)
       @ui = ui
       @server = server
-      @offenses_by_file = parse_offenses_by_file(json)
+      @all_offenses = parse_all_offenses(json)
+      @offense_states = {}  # offense.object_id => :pending/:corrected/:skipped/:disabled
       @stats = { corrected: 0, skipped: 0, disabled: 0 }
     end
 
     def offenses
-      @offenses_by_file.values.flatten
+      @all_offenses
     end
 
     def run
-      total = offenses.size
+      total = @all_offenses.size
       @ui.show_summary(total: total)
 
       index = 0
-      @offenses_by_file.each do |file_path, file_offenses|
-        while file_offenses.any?
-          offense = file_offenses.shift
-          @ui.show_offense(offense, index: index, total: total)
+      while index >= 0 && index < @all_offenses.size
+        offense = @all_offenses[index]
+        state = @offense_states[offense.object_id] || :pending
 
-          action = @ui.prompt_for_action(offense)
-          result = Actions.perform(action, offense, server: @server)
+        @ui.show_offense(offense, index: index, total: total, state: state)
 
-          track_result(result)
+        action = @ui.prompt_for_action(offense, state: state)
 
-          if result == :quit
-            @ui.show_stats(@stats)
-            return @stats
-          end
-
-          # If we modified the file, re-scan to get fresh line numbers
-          if result == :corrected || result == :disabled
-            file_offenses = refresh_offenses_for_file(file_path)
-            @offenses_by_file[file_path] = file_offenses
-          end
-
-          index += 1
+        case action
+        when :prev
+          index = index - 1
+          index = @all_offenses.size - 1 if index < 0  # Wrap to end
+          next
+        when :next
+          index = index + 1
+          index = 0 if index >= @all_offenses.size  # Wrap to start
+          next
+        when :quit
+          @ui.show_stats(@stats)
+          return @stats
         end
+
+        result = Actions.perform(action, offense, server: @server)
+        track_result(result)
+        @offense_states[offense.object_id] = result if result != :skipped || state == :pending
+
+        # Move to next offense after action (unless already at end)
+        index += 1
       end
 
       @ui.show_stats(@stats)
@@ -52,31 +58,17 @@ module RubocopInteractive
 
     private
 
-    def parse_offenses_by_file(json)
+    def parse_all_offenses(json)
       data = json.is_a?(String) ? JSON.parse(json) : json
 
-      offenses_by_file = {}
+      offenses = []
       data['files'].each do |file|
         file_path = file['path']
-        offenses_by_file[file_path] = file['offenses'].map do |offense_data|
-          Offense.new(file_path: file_path, data: offense_data)
+        file['offenses'].each do |offense_data|
+          offenses << Offense.new(file_path: file_path, data: offense_data)
         end
       end
-      offenses_by_file
-    end
-
-    def refresh_offenses_for_file(file_path)
-      # Re-run rubocop on just this file to get fresh offenses
-      json_output = `rubocop --format json "#{file_path}" 2>/dev/null`
-      return [] if json_output.empty?
-
-      data = JSON.parse(json_output)
-      file_data = data['files'].first
-      return [] unless file_data
-
-      file_data['offenses'].map do |offense_data|
-        Offense.new(file_path: file_path, data: offense_data)
-      end
+      offenses
     end
 
     def track_result(result)

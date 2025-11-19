@@ -1,0 +1,5 @@
+[<%= offense_number %>/<%= total_offenses %>] <%= bold(cop_name) %> <%= dim(location) %> <%= state_indicator %>
+  <%= italic(message) %>
+
+<%= patch(old_color: :red, new_color: :green, context_color: :dim, inline: true, merge: true, show_spaces: '█', line_numbers: true) %>
+<%= prompt(cursor: "\u2588", blink: true) %>
