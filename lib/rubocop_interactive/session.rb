@@ -70,12 +70,9 @@ module RubocopInteractive
         # Handle autocorrect with safe/unsafe validation
         if action == :autocorrect_safe || action == :autocorrect_unsafe
           if !offense.correctable?
-            # Can't autocorrect non-correctable offense - move to next
-            if index >= @all_offenses.size - 1
-              @ui.show_stats(@stats)
-              return @stats
-            end
-            index += 1
+            # Can't autocorrect non-correctable offense - beep and stay
+            @ui.beep
+            needs_redraw = false
             next
           elsif action == :autocorrect_safe && !offense.safe_autocorrect?
             # User pressed 'a' but this is unsafe - show error and retry

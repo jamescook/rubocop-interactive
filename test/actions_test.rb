@@ -25,7 +25,7 @@ class ActionsTest < Minitest::Test
 
       result = RubocopInteractive::Actions.perform(:autocorrect, offense, server: server)
 
-      assert_equal :corrected, result
+      assert_equal :corrected, result[:status]
 
       corrected_content = File.read(file_path)
 
@@ -47,7 +47,7 @@ class ActionsTest < Minitest::Test
 
       result = RubocopInteractive::Actions.perform(:disable_line, offense, server: server)
 
-      assert_equal :disabled, result
+      assert_equal :disabled, result[:status]
 
       content = File.read(file_path)
       assert_match(/rubocop:disable Style\/StringLiterals/, content)
@@ -62,11 +62,79 @@ class ActionsTest < Minitest::Test
 
       result = RubocopInteractive::Actions.perform(:disable_file, offense, server: server)
 
-      assert_equal :disabled, result
+      assert_equal :disabled, result[:status]
 
       lines = File.readlines(file_path)
       assert_match(/rubocop:disable Style\/StringLiterals/, lines.first)
       assert_match(/rubocop:enable Style\/StringLiterals/, lines.last)
+    end
+  end
+
+  def test_disable_line_wraps_comment_only_lines
+    # When a line is comment-only, wrap with disable/enable to avoid
+    # "# comment # rubocop:disable" syntax which confuses RuboCop.
+    Dir.mktmpdir do |dir|
+      file_path = File.join(dir, 'comment_only.rb')
+      File.write(file_path, <<~RUBY)
+        # frozen_string_literal: true
+
+        # This is a comment-only line
+        x = 1
+      RUBY
+
+      offense_data = {
+        'cop_name' => 'Style/CommentAnnotation',
+        'message' => 'Annotation comment',
+        'severity' => 'convention',
+        'correctable' => false,
+        'location' => { 'start_line' => 3, 'start_column' => 1, 'length' => 1 }
+      }
+
+      offense = RubocopInteractive::Offense.new(file_path: file_path, data: offense_data)
+      server = FakeServer.new
+
+      result = RubocopInteractive::Actions.perform(:disable_line, offense, server: server)
+
+      assert_equal :disabled, result[:status]
+
+      lines = File.readlines(file_path)
+
+      # Should wrap the comment-only line with disable/enable
+      assert_match(/rubocop:disable Style\/CommentAnnotation/, lines[2])
+      assert_match(/# This is a comment-only line/, lines[3])
+      assert_match(/rubocop:enable Style\/CommentAnnotation/, lines[4])
+    end
+  end
+
+  def test_disable_line_appends_to_existing_disable
+    # When a line already has a rubocop:disable, append the new cop to it
+    Dir.mktmpdir do |dir|
+      file_path = File.join(dir, 'existing_disable.rb')
+      File.write(file_path, <<~RUBY)
+        # frozen_string_literal: true
+
+        x = 1 # rubocop:disable Lint/UselessAssignment
+      RUBY
+
+      offense_data = {
+        'cop_name' => 'Style/Something',
+        'message' => 'Some issue',
+        'severity' => 'convention',
+        'correctable' => false,
+        'location' => { 'start_line' => 3, 'start_column' => 1, 'length' => 1 }
+      }
+
+      offense = RubocopInteractive::Offense.new(file_path: file_path, data: offense_data)
+      server = FakeServer.new
+
+      result = RubocopInteractive::Actions.perform(:disable_line, offense, server: server)
+
+      assert_equal :disabled, result[:status]
+
+      content = File.read(file_path)
+
+      # Should append to existing disable directive
+      assert_match(/rubocop:disable Lint\/UselessAssignment, Style\/Something/, content)
     end
   end
 end

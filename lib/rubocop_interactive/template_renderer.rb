@@ -27,8 +27,8 @@ module RubocopInteractive
     end
 
     def find_template_path
-      # Check if it's an absolute path
-      return @template_name if File.exist?(@template_name)
+      # Check if it's an absolute path to a file
+      return @template_name if File.file?(@template_name)
 
       # Check user templates first
       user_path = File.join(USER_TEMPLATES_PATH, "#{@template_name}.erb")

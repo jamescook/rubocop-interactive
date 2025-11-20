@@ -27,7 +27,12 @@ end
 
 options = {}
 OptionParser.new do |opts|
-  opts.banner = 'Usage: rubocop --format json | rubocop-interactive [options]'
+  opts.banner = 'Usage: rubocop-interactive [options] [file ...]'
+  opts.separator ''
+  opts.separator 'Examples:'
+  opts.separator '  rubocop-interactive file.rb              # Run rubocop on file.rb'
+  opts.separator '  rubocop --format json | rubocop-interactive  # Pipe from rubocop'
+  opts.separator ''
 
   opts.on('--confirm-patch', 'Show patch preview before applying corrections') do
     options[:confirm_patch] = true
@@ -43,10 +48,33 @@ OptionParser.new do |opts|
   end
 end.parse!
 
-json = $stdin.read
+# Get JSON either from file arguments or stdin
+json = if ARGV.any?
+         # Run rubocop on specified files using in-process API
+         require 'rubocop'
+         require 'stringio'
+
+         output = StringIO.new
+         old_stdout = $stdout
+         old_stderr = $stderr
+         $stdout = output
+         $stderr = StringIO.new
+
+         begin
+           cli = RuboCop::CLI.new
+           cli.run(['--format', 'json'] + ARGV)
+         ensure
+           $stdout = old_stdout
+           $stderr = old_stderr
+         end
+
+         output.string
+       else
+         $stdin.read
+       end
 
 if json.empty?
-  warn 'Usage: rubocop --format json | rubocop-interactive'
+  warn 'Usage: rubocop-interactive [file ...] or rubocop --format json | rubocop-interactive'
   exit 1
 end
 

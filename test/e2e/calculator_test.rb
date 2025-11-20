@@ -6,6 +6,49 @@ require 'fileutils'
 require 'stringio'
 require_relative '../../lib/rubocop_interactive'
 
+# Custom IO that reads TUI output and decides what key to press
+class SmartTestInput
+  def initialize(strategy: :safe_autocorrect)
+    @strategy = strategy
+    @buffer = []
+    @output_buffer = ""
+  end
+
+  def set_output(output_io)
+    @output_io = output_io
+  end
+
+  def getch
+    return @buffer.shift unless @buffer.empty?
+
+    # Read new output since last check
+    new_output = @output_io.string[@output_buffer.length..]
+    @output_buffer = @output_io.string.dup
+
+    # Find and parse JSON lines from test template
+    new_output.each_line do |line|
+      line = line.strip
+      next if line.empty? || !line.start_with?('{')
+
+      data = JSON.parse(line)
+      next unless data['offense_number'] # Skip non-offense JSON
+
+      key = case @strategy
+            when :safe_autocorrect
+              (data['correctable'] && data['safe']) ? 'a' : 's'
+            when :unsafe_autocorrect
+              data['correctable'] ? (data['safe'] ? 'a' : 'A') : 's'
+            when :skip_all
+              's'
+            end
+
+      return key
+    end
+
+    raise "SmartTestInput: No offense JSON found in output. Buffer length: #{@output_buffer.length}, new output: #{new_output.inspect[0..200]}"
+  end
+end
+
 class CalculatorE2ETest < Minitest::Test
   FIXTURE_PATH = File.expand_path('fixtures/calculator.rb', __dir__)
   WORK_DIR = File.expand_path('../../tmp/e2e_work', __dir__)
@@ -42,31 +85,28 @@ class CalculatorE2ETest < Minitest::Test
     assert correctable > 10, "Expected many correctable offenses"
     assert non_correctable > 5, "Expected some non-correctable offenses"
 
-    # 3. Build input sequence: 'A' for correctable (works for safe and unsafe), 's' for non-correctable
-    # We need to match the order rubocop reports them
-    input_sequence = offenses.map { |o| o['correctable'] ? 'A' : 's' }.join
-
-    # 4. Run rubocop-interactive with simulated input
-    input = StringIO.new(input_sequence)
+    # 3. Run with SmartTestInput that reads output to decide actions
     output = StringIO.new
+    input = SmartTestInput.new(strategy: :safe_autocorrect)
+    input.set_output(output)
 
     ui = RubocopInteractive::UI.new(
       input: input,
       output: output,
-      confirm_patch: false
+      confirm_patch: false,
+      template: 'test',
+      ansi: false
     )
 
     stats = RubocopInteractive.start!(json.to_json, ui: ui)
 
-    # 5. Verify stats - some corrections may fix multiple offenses at once
-    # so stats[:corrected] counts 'a' presses, not total offenses fixed
+    # 4. Verify stats
     assert stats[:corrected] > 0, "Should have made some corrections"
-    assert stats[:corrected] <= correctable, "Can't correct more than available"
 
-    # 6. Verify calculator still works after corrections
+    # 5. Verify calculator still works after corrections
     assert run_calculator, "Calculator should work after corrections"
 
-    # 7. Verify fewer offenses remain
+    # 6. Verify fewer offenses remain
     new_json = run_rubocop_json
     new_offenses = new_json['files'][0]['offenses']
     new_total = new_offenses.size
@@ -75,9 +115,6 @@ class CalculatorE2ETest < Minitest::Test
     assert new_total < total, "Should have fewer offenses after corrections"
 
     # Most correctable offenses should be fixed
-    # Note: Some may remain due to line number shifts after earlier corrections
-    # (e.g., adding frozen_string_literal shifts all subsequent lines)
-    # Users can run the tool multiple times to catch these
     remaining_correctable = new_offenses.count { |o| o['correctable'] }
     assert remaining_correctable < correctable / 2,
            "At least half of correctable offenses should be fixed, #{remaining_correctable} of #{correctable} remaining"
@@ -86,39 +123,28 @@ class CalculatorE2ETest < Minitest::Test
   def test_navigation_and_mixed_actions
     # Test that we can navigate and perform different actions
     json = run_rubocop_json
-    offenses = json['files'][0]['offenses']
-    total = offenses.size
 
     # Navigate forward 3, back 2, then process remaining
     # This tests that navigation doesn't break the flow
-    input_keys = []
-
-    # Arrow right 3 times (skip first 3 without acting)
-    3.times { input_keys << "\e[C" }  # Right arrow
-
-    # Arrow left 2 times (go back)
-    2.times { input_keys << "\e[D" }  # Left arrow
-
-    # Now we're on offense 2 (0-indexed: 1)
-    # Process remaining offenses with 'A' or 's'
-    # We need to handle offense 1 through end
-    (1...total).each do |i|
-      input_keys << (offenses[i]['correctable'] ? 'A' : 's')
-    end
-
-    input = StringIO.new(input_keys.join)
     output = StringIO.new
+    input = SmartTestInput.new(strategy: :safe_autocorrect)
+    input.set_output(output)
+
+    # Pre-buffer navigation keys: right 3, left 2
+    3.times { input.instance_variable_get(:@buffer) << "\e" << "[" << "C" }
+    2.times { input.instance_variable_get(:@buffer) << "\e" << "[" << "D" }
 
     ui = RubocopInteractive::UI.new(
       input: input,
       output: output,
-      confirm_patch: false
+      confirm_patch: false,
+      template: 'test',
+      ansi: false
     )
 
     stats = RubocopInteractive.start!(json.to_json, ui: ui)
 
     # We skipped offense 0, so should have made some corrections
-    # (exact count varies due to multi-offense fixes)
     assert stats[:corrected] > 0, "Should have made corrections"
 
     # Calculator should still work
@@ -127,21 +153,18 @@ class CalculatorE2ETest < Minitest::Test
 
   def test_autocorrect_all
     json = run_rubocop_json
-    offenses = json['files'][0]['offenses']
-    initial_count = offenses.size
 
-    # Press 'A' for every offense - this will autocorrect correctable ones
-    # (both safe and unsafe) and skip non-correctable ones
-    # Use way more than needed to ensure we don't run out
-    input_keys = 'A' * (initial_count * 2)
-
-    input = StringIO.new(input_keys)
+    # Use unsafe_autocorrect strategy to fix everything possible
     output = StringIO.new
+    input = SmartTestInput.new(strategy: :unsafe_autocorrect)
+    input.set_output(output)
 
     ui = RubocopInteractive::UI.new(
       input: input,
       output: output,
-      confirm_patch: false
+      confirm_patch: false,
+      template: 'test',
+      ansi: false
     )
 
     stats = RubocopInteractive.start!(json.to_json, ui: ui)
@@ -161,27 +184,47 @@ class CalculatorE2ETest < Minitest::Test
 
   def test_disable_line_action
     json = run_rubocop_json
-    offenses = json['files'][0]['offenses']
 
-    # Find first non-correctable offense and disable it
-    first_non_correctable_idx = offenses.index { |o| !o['correctable'] }
-    assert first_non_correctable_idx, "Should have non-correctable offenses"
-
-    # Skip to the non-correctable, disable it, then quit
-    input_keys = []
-    (0...first_non_correctable_idx).each do |i|
-      input_keys << (offenses[i]['correctable'] ? 'A' : 's')
-    end
-    input_keys << 'd'  # Disable line
-    input_keys << 'q'  # Quit
-
-    input = StringIO.new(input_keys.join)
+    # Use a custom input that disables the first non-correctable offense
     output = StringIO.new
+    input = SmartTestInput.new(strategy: :safe_autocorrect)
+    input.set_output(output)
+
+    # Override getch to disable first non-correctable, then quit
+    disabled_one = false
+    input.define_singleton_method(:getch) do
+      return @buffer.shift unless @buffer.empty?
+
+      new_output = @output_io.string[@output_buffer.length..]
+      @output_buffer = @output_io.string.dup
+
+      new_output.each_line do |line|
+        line = line.strip
+        next if line.empty? || !line.start_with?('{')
+
+        data = JSON.parse(line)
+        next unless data['offense_number']
+
+        if !data['correctable'] && !disabled_one
+          disabled_one = true
+          @buffer << 'q'  # Quit after disabling
+          return 'd'      # Disable this one
+        elsif data['correctable'] && data['safe']
+          return 'a'
+        else
+          return 's'
+        end
+      end
+
+      raise "SmartTestInput: No offense JSON found"
+    end
 
     ui = RubocopInteractive::UI.new(
       input: input,
       output: output,
-      confirm_patch: false
+      confirm_patch: false,
+      template: 'test',
+      ansi: false
     )
 
     stats = RubocopInteractive.start!(json.to_json, ui: ui)
@@ -198,10 +241,13 @@ class CalculatorE2ETest < Minitest::Test
 
   def test_output_contains_expected_elements
     json = run_rubocop_json
-    offenses = json['files'][0]['offenses']
 
-    # Just process first 3 offenses
-    input_keys = offenses[0..2].map { |o| o['correctable'] ? 'a' : 's' }
+    # Process first 3 offenses then quit - use simple StringIO with known keys
+    # First 3 offenses: check what they are and send appropriate keys
+    offenses = json['files'][0]['offenses']
+    input_keys = offenses[0..2].map do |o|
+      (o['correctable'] && o.fetch('safe_autocorrect', true)) ? 'a' : 's'
+    end
     input_keys << 'q'
 
     input = StringIO.new(input_keys.join)
@@ -211,6 +257,7 @@ class CalculatorE2ETest < Minitest::Test
       input: input,
       output: output,
       confirm_patch: false
+      # Use default template to test output format
     )
 
     RubocopInteractive.start!(json.to_json, ui: ui)

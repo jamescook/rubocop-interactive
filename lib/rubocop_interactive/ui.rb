@@ -17,12 +17,13 @@ module RubocopInteractive
       "\u0003" => :interrupt  # Ctrl+C
     }.freeze
 
-    def initialize(input: nil, output: $stdout, confirm_patch: false, template: 'default')
+    def initialize(input: nil, output: $stdout, confirm_patch: false, template: 'default', ansi: true)
       # Use TTY for input when stdin is a pipe
       @input = input || (File.open('/dev/tty') rescue $stdin)
       @output = output
       @confirm_patch = confirm_patch
       @last_interrupt = nil
+      @ansi = ansi
       @renderer = TemplateRenderer.new(template_name: template)
     end
 
@@ -142,6 +143,8 @@ module RubocopInteractive
     end
 
     def print(msg)
+      # Strip ANSI codes if ansi mode is disabled
+      msg = msg.gsub(/\e\[[0-9;]*[a-zA-Z]/, '').gsub(/\a/, '') unless @ansi
       @output.print(msg)
     end
 

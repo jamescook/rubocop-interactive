@@ -47,6 +47,7 @@ class TemplateContextTest < Minitest::Test
 
   def test_prompt_helper_for_correctable
     @context.correctable = true
+    @context.safe_autocorrect = true
     prompt = @context.prompt
 
     assert_includes prompt, '[a]pply'
@@ -136,6 +137,7 @@ class TemplateRendererTest < Minitest::Test
       line: 42,
       column: 10,
       correctable: true,
+      safe_autocorrect: true,
       state: :pending,
       patch_lines: ["-  x=1\n", "+  x = 1\n"]
     )

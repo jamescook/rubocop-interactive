@@ -1,120 +1,162 @@
 # frozen_string_literal: true
 
 require_relative 'test_helper'
-require 'rubocop_interactive/patch_generator'
 
 class PatchGeneratorTest < Minitest::Test
-  def test_extract_relevant_hunk_single_change
+  def test_generate_diff_single_change
     original = ["line 1\n", "line 2\n", "line 3\n"]
     corrected = ["line 1\n", "changed 2\n", "line 3\n"]
 
-    result = RubocopInteractive::PatchGenerator.extract_relevant_hunk(original, corrected, 2)
+    result = RubocopInteractive::PatchGenerator.generate_diff(original, corrected)
 
-    assert result
-    assert_equal 1, result[:start]  # Context starts at line 1
-    assert_includes result[:lines], " line 1\n"
-    assert_includes result[:lines], "-line 2\n"
-    assert_includes result[:lines], "+changed 2\n"
+    assert_includes result, " line 1\n"
+    assert_includes result, "-line 2\n"
+    assert_includes result, "+changed 2\n"
+    assert_includes result, " line 3\n"
   end
 
-  def test_extract_relevant_hunk_with_context
-    original = ["a\n", "b\n", "c\n", "d\n", "e\n"]
-    corrected = ["a\n", "b\n", "X\n", "d\n", "e\n"]
-
-    result = RubocopInteractive::PatchGenerator.extract_relevant_hunk(original, corrected, 3)
-
-    assert result
-    # Should include context line before
-    assert_includes result[:lines], " b\n"
-    assert_includes result[:lines], "-c\n"
-    assert_includes result[:lines], "+X\n"
-    # Should include context line after
-    assert_includes result[:lines], " d\n"
-  end
-
-  def test_extract_relevant_hunk_deletion
+  def test_generate_diff_deletion
     original = ["a\n", "b\n", "c\n"]
     corrected = ["a\n", "c\n"]
 
-    result = RubocopInteractive::PatchGenerator.extract_relevant_hunk(original, corrected, 2)
+    result = RubocopInteractive::PatchGenerator.generate_diff(original, corrected)
 
-    assert result
-    assert_includes result[:lines], "-b\n"
-    refute_includes result[:lines], "+b"
+    assert_includes result, " a\n"
+    assert_includes result, "-b\n"
+    assert_includes result, " c\n"
+    refute_includes result, "+b"
   end
 
-  def test_extract_relevant_hunk_addition
+  def test_generate_diff_addition
     original = ["a\n", "c\n"]
     corrected = ["a\n", "b\n", "c\n"]
 
-    # Target line 2 in original (which is "c")
-    # After addition, we're looking at the change near line 2
-    result = RubocopInteractive::PatchGenerator.extract_relevant_hunk(original, corrected, 1)
+    result = RubocopInteractive::PatchGenerator.generate_diff(original, corrected)
 
-    assert result
-    assert_includes result[:lines], "+b\n"
+    assert_includes result, " a\n"
+    assert_includes result, "+b\n"
+    assert_includes result, " c\n"
   end
 
-  def test_extract_relevant_hunk_multiple_hunks_returns_correct_one
-    original = ["a\n", "b\n", "c\n", "d\n", "e\n", "f\n", "g\n"]
-    corrected = ["a\n", "X\n", "c\n", "d\n", "e\n", "Y\n", "g\n"]
-
-    # Get hunk for line 2 (b -> X)
-    result = RubocopInteractive::PatchGenerator.extract_relevant_hunk(original, corrected, 2)
-    assert result
-    assert_includes result[:lines], "-b\n"
-    assert_includes result[:lines], "+X\n"
-    refute_includes result[:lines], "-f\n"
-
-    # Get hunk for line 6 (f -> Y)
-    result = RubocopInteractive::PatchGenerator.extract_relevant_hunk(original, corrected, 6)
-    assert result
-    assert_includes result[:lines], "-f\n"
-    assert_includes result[:lines], "+Y\n"
-    refute_includes result[:lines], "-b\n"
-  end
-
-  def test_extract_relevant_hunk_no_match_returns_nil
-    original = ["a\n", "b\n", "c\n"]
-    corrected = ["a\n", "X\n", "c\n"]
-
-    # Line 3 is not in any hunk
-    result = RubocopInteractive::PatchGenerator.extract_relevant_hunk(original, corrected, 3)
-
-    # Line 3 is context after the hunk, so might be included
-    # Let's check line 1 which is definitely not in the hunk
-    result = RubocopInteractive::PatchGenerator.extract_relevant_hunk(original, corrected, 1)
-
-    # Line 1 is context before the hunk at line 2
-    # The hunk includes it, so we need a line that's not in any hunk
-    original = ["a\n", "b\n", "c\n", "d\n", "e\n"]
-    corrected = ["a\n", "X\n", "c\n", "d\n", "e\n"]
-
-    # Line 5 is far from the change
-    result = RubocopInteractive::PatchGenerator.extract_relevant_hunk(original, corrected, 5)
-    assert_nil result
-  end
-
-  def test_extract_relevant_hunk_returns_start_line
-    original = ["line 1\n", "line 2\n", "line 3\n", "line 4\n", "line 5\n"]
-    corrected = ["line 1\n", "line 2\n", "changed\n", "line 4\n", "line 5\n"]
-
-    result = RubocopInteractive::PatchGenerator.extract_relevant_hunk(original, corrected, 3)
-
-    assert result
-    assert_equal 2, result[:start]  # Context starts at line 2
-  end
-
-  def test_extract_relevant_hunk_consecutive_changes
+  def test_generate_diff_multiple_changes
     original = ["a\n", "b\n", "c\n", "d\n"]
     corrected = ["a\n", "X\n", "Y\n", "d\n"]
 
-    result = RubocopInteractive::PatchGenerator.extract_relevant_hunk(original, corrected, 2)
+    result = RubocopInteractive::PatchGenerator.generate_diff(original, corrected)
 
-    assert result
-    assert_includes result[:lines], "-b\n"
-    assert_includes result[:lines], "+X\n"
-    assert_includes result[:lines], "-c\n"
-    assert_includes result[:lines], "+Y\n"
+    assert_includes result, " a\n"
+    assert_includes result, "-b\n"
+    assert_includes result, "+X\n"
+    assert_includes result, "-c\n"
+    assert_includes result, "+Y\n"
+    assert_includes result, " d\n"
+  end
+
+  def test_generate_diff_no_changes
+    original = ["a\n", "b\n", "c\n"]
+    corrected = ["a\n", "b\n", "c\n"]
+
+    result = RubocopInteractive::PatchGenerator.generate_diff(original, corrected)
+
+    # All context lines
+    assert_equal [" a\n", " b\n", " c\n"], result
+  end
+
+  def test_generate_with_string_literals_offense
+    # Create a temp file with double-quoted string that should be single-quoted
+    Dir.mktmpdir do |dir|
+      file_path = File.join(dir, 'test.rb')
+      File.write(file_path, <<~RUBY)
+        # frozen_string_literal: true
+
+        def foo
+          x = "double quotes"
+          x
+        end
+      RUBY
+
+      # Create an offense like RuboCop would report
+      offense = RubocopInteractive::Offense.new(
+        file_path: file_path,
+        data: {
+          'cop_name' => 'Style/StringLiterals',
+          'message' => "Prefer single-quoted strings when you don't need string interpolation or special symbols.",
+          'severity' => 'convention',
+          'correctable' => true,
+          'location' => {
+            'start_line' => 4,
+            'start_column' => 7,
+            'length' => 15
+          }
+        }
+      )
+
+      result = RubocopInteractive::PatchGenerator.generate(offense)
+
+      assert result, "Should generate a patch for Style/StringLiterals"
+      assert result[:lines], "Should have patch lines"
+      assert_match(/-.*"double quotes"/, result[:lines], "Should show old double-quoted string")
+      assert_match(/\+.*'double quotes'/, result[:lines], "Should show new single-quoted string")
+    end
+  end
+
+  def test_generate_with_bad_code_fixture
+    # Use the actual bad_code.rb fixture - Style/StringLiterals on line 6
+    file_path = File.expand_path('fixtures/sample_project/bad_code.rb', __dir__)
+
+    offense = RubocopInteractive::Offense.new(
+      file_path: file_path,
+      data: {
+        'cop_name' => 'Style/StringLiterals',
+        'message' => "Prefer single-quoted strings when you don't need string interpolation or special symbols.",
+        'severity' => 'convention',
+        'correctable' => true,
+        'location' => {
+          'start_line' => 6,
+          'start_column' => 7,
+          'length' => 15
+        }
+      }
+    )
+
+    result = RubocopInteractive::PatchGenerator.generate(offense)
+
+    assert result, "Should generate a patch for Style/StringLiterals in bad_code.rb"
+    assert result[:lines], "Should have patch lines"
+    assert_match(/-.*"double quotes"/, result[:lines], "Should show old double-quoted string")
+    assert_match(/\+.*'double quotes'/, result[:lines], "Should show new single-quoted string")
+  end
+
+  def test_generate_useless_assignment_only_shows_target_line
+    # Lint/UselessAssignment on line 12 should only show line 12 being deleted
+    # Not line 13 (hash = ...) which is unrelated
+    file_path = File.expand_path('fixtures/sample_project/bad_code.rb', __dir__)
+
+    offense = RubocopInteractive::Offense.new(
+      file_path: file_path,
+      data: {
+        'cop_name' => 'Lint/UselessAssignment',
+        'message' => 'Useless assignment to variable - `array`.',
+        'severity' => 'warning',
+        'correctable' => true,
+        'location' => {
+          'start_line' => 12,
+          'start_column' => 3,
+          'length' => 5
+        }
+      }
+    )
+
+    result = RubocopInteractive::PatchGenerator.generate(offense)
+
+    assert result, "Should generate a patch for Lint/UselessAssignment"
+    assert result[:lines], "Should have patch lines"
+
+    # Should show the deletion of line 12's assignment
+    assert_match(/-.*array\s*=/, result[:lines], "Should show deletion of array assignment")
+
+    # Should NOT show line 13's hash as a change
+    refute_match(/-.*hash\s*=/, result[:lines], "Should not show line 13 hash as deleted")
+    refute_match(/\+.*hash\s*=/, result[:lines], "Should not show line 13 hash as added")
   end
 end
