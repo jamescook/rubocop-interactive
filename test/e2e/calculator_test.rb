@@ -7,16 +7,21 @@ require 'stringio'
 require_relative '../../lib/rubocop_interactive'
 
 # E2E Test Maintenance Guide:
-# These tests depend on the exact offense sequence in fixtures/calculator.rb.
-# If you modify the fixture, regenerate the offense reference to update keypresses:
+# These tests depend on the exact offense sequence in fixtures/comprehensive.rb.
 #
-#   rubocop test/e2e/fixtures/calculator.rb \
-#     --only Style/StringLiterals,Style/FrozenStringLiteralComment,Naming/MethodParameterName,Layout/TrailingWhitespace,Style/RedundantReturn \
-#     --cache false --format json 2>/dev/null | \
-#     jq '.files[0].offenses | map({cop: .cop_name, line: .location.line, correctable: .correctable})'
+# To regenerate keypresses after modifying the fixture:
 #
-# Use this output to determine the exact sequence of keypresses ('a' for correctable, 's' for skip).
-# Remember: autocorrections shift line numbers, so offenses may change after each correction.
+# 1. Run interactively with recording enabled:
+#      bin/rubocop-interactive --record test/e2e/fixtures/comprehensive.rb
+#
+# 2. Manually perform the desired actions (autocorrect, skip, disable, etc.)
+#
+# 3. Review the generated keystroke_record_TIMESTAMP.log file
+#
+# 4. Update the test's keypresses string and expected stats
+#
+# Note: The --record flag is undocumented and only for test development.
+# It captures all keypresses and saves them to a timestamped log file.
 
 # Debug wrapper to track consumed input
 class DebugInput

@@ -8,6 +8,11 @@ if ENV['COVERAGE']
   end
 end
 
+if ENV['PROFILE']
+  require 'stackprof'
+  require 'json'
+end
+
 require 'minitest/autorun'
 require 'fileutils'
 require_relative '../lib/rubocop_interactive'
@@ -26,3 +31,16 @@ end
 # Load test support files
 require_relative 'support/helpers'
 require_relative 'support/fakes'
+
+if ENV['PROFILE']
+  # Sample every 100 microseconds (10,000 Hz) for high resolution
+  StackProf.start(mode: :wall, raw: true, interval: 100)
+
+  Minitest.after_run do
+    StackProf.stop
+    profile = StackProf.results
+    File.write('tmp/stackprof.json', JSON.generate(profile))
+    puts "\nProfile saved to tmp/stackprof.json"
+    puts "Upload to https://www.speedscope.app/"
+  end
+end

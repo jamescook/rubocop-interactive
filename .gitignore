@@ -31,3 +31,6 @@ Thumbs.db
 
 # Stress test output
 stress_test.rb
+
+# Keypress recordings (test development only)
+keystroke_record_*.log

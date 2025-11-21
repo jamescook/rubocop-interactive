@@ -3,3 +3,8 @@
 source 'https://rubygems.org'
 
 gemspec
+
+group :development, :test do
+  gem 'ruby-prof'
+  gem 'stackprof'
+end

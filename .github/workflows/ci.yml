@@ -24,7 +24,7 @@ jobs:
           bundler-cache: true
 
       - name: Run tests
-        run: bundle exec rake test
+        run: timeout 30s bundle exec rake test
 
 #     - name: Run RuboCop
 #       run: bundle exec rubocop
