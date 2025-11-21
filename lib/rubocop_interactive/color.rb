@@ -155,7 +155,6 @@ module RubocopInteractive
     class << self
       def colorize(text, color, bold: false)
         return text unless color
-        return text unless $stdout.tty?
 
         code = color_code(color)
         return text unless code
@@ -190,14 +189,10 @@ module RubocopInteractive
       end
 
       def bold(text)
-        return text unless $stdout.tty?
-
         "#{ANSI::BOLD}#{text}#{ANSI::RESET}"
       end
 
       def dim(text)
-        return text unless $stdout.tty?
-
         "#{ANSI::DIM}#{text}#{ANSI::RESET}"
       end
 

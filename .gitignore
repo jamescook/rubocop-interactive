@@ -1,0 +1,33 @@
+# Coverage reports
+coverage/
+
+# Temporary files
+tmp/
+
+# Bundler
+Gemfile.lock
+
+# RubyGems
+*.gem
+
+# RDoc documentation
+doc/
+.yardoc/
+
+# Test artifacts
+test/tmp/
+test/version_tmp/
+
+# IDE/Editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Stress test output
+stress_test.rb

@@ -17,13 +17,13 @@ module RubocopInteractive
       "\u0003" => :interrupt  # Ctrl+C
     }.freeze
 
-    def initialize(input: nil, output: $stdout, confirm_patch: false, template: 'default', ansi: true)
+    def initialize(input: nil, output: $stdout, confirm_patch: false, template: 'default', ansi: true, colorizer: nil)
       # Use TTY for input when stdin is a pipe
       @input = input || (File.open('/dev/tty') rescue $stdin)
       @output = output
       @confirm_patch = confirm_patch
       @last_interrupt = nil
-      @ansi = ansi
+      @colorizer = colorizer || (ansi ? Color : NoopColorizer)
       @renderer = TemplateRenderer.new(template_name: template)
     end
 
@@ -54,7 +54,7 @@ module RubocopInteractive
         # Clear line and reprint prompt
         clear_line
         print prompt_text
-        print Color.red(" #{error_msg}") if error_msg
+        print @colorizer.red(" #{error_msg}") if error_msg
 
         input = read_input
         error_msg = nil  # Clear error for next iteration
@@ -102,13 +102,13 @@ module RubocopInteractive
     end
 
     def beep
-      print ANSI::BELL
+      print @colorizer::BELL
     end
 
     def show_unsafe_error
       # Clear line and show error - will be cleared on next prompt
       clear_line
-      print Color.yellow("Press 'A' (capital) for unsafe autocorrect")
+      print @colorizer.yellow("Press 'A' (capital) for unsafe autocorrect")
       beep
     end
 
@@ -121,7 +121,8 @@ module RubocopInteractive
       # Build a context just for rendering the patch
       context = TemplateContext.new(
         patch_lines: patch_data[:lines].lines,
-        patch_start_line: patch_data[:start_line]
+        patch_start_line: patch_data[:start_line],
+        colorizer: @colorizer
       )
 
       puts
@@ -143,8 +144,6 @@ module RubocopInteractive
     end
 
     def print(msg)
-      # Strip ANSI codes if ansi mode is disabled
-      msg = msg.gsub(/\e\[[0-9;]*[a-zA-Z]/, '').gsub(/\a/, '') unless @ansi
       @output.print(msg)
     end
 
@@ -166,7 +165,7 @@ module RubocopInteractive
     end
 
     def clear_line
-      print ANSI::CLEAR_LINE
+      print @colorizer::CLEAR_LINE
     end
 
     def build_default_prompt(offense, state: :pending)
@@ -210,7 +209,8 @@ module RubocopInteractive
         length: offense.length,
         correctable: state == :pending && offense.correctable?,
         safe_autocorrect: offense.safe_autocorrect?,
-        state: state
+        state: state,
+        colorizer: @colorizer
       )
     end
 

@@ -14,6 +14,7 @@ class TemplateContextTest < Minitest::Test
       column: 7,
       correctable: true,
       state: :pending,
+      colorizer: RubocopInteractive::NoopColorizer,
       patch_lines: [
         " def hello_world\n",
         "-  x = \"double quotes\"\n",
@@ -139,6 +140,7 @@ class TemplateRendererTest < Minitest::Test
       correctable: true,
       safe_autocorrect: true,
       state: :pending,
+      colorizer: RubocopInteractive::NoopColorizer,
       patch_lines: ["-  x=1\n", "+  x = 1\n"]
     )
   end

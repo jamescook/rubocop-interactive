@@ -95,7 +95,7 @@ class CalculatorE2ETest < Minitest::Test
       output: output,
       confirm_patch: false,
       template: 'test',
-      ansi: false
+      colorizer: RubocopInteractive::NoopColorizer
     )
 
     stats = RubocopInteractive.start!(json.to_json, ui: ui)
@@ -139,7 +139,7 @@ class CalculatorE2ETest < Minitest::Test
       output: output,
       confirm_patch: false,
       template: 'test',
-      ansi: false
+      colorizer: RubocopInteractive::NoopColorizer
     )
 
     stats = RubocopInteractive.start!(json.to_json, ui: ui)
@@ -164,7 +164,7 @@ class CalculatorE2ETest < Minitest::Test
       output: output,
       confirm_patch: false,
       template: 'test',
-      ansi: false
+      colorizer: RubocopInteractive::NoopColorizer
     )
 
     stats = RubocopInteractive.start!(json.to_json, ui: ui)
@@ -224,7 +224,7 @@ class CalculatorE2ETest < Minitest::Test
       output: output,
       confirm_patch: false,
       template: 'test',
-      ansi: false
+      colorizer: RubocopInteractive::NoopColorizer
     )
 
     stats = RubocopInteractive.start!(json.to_json, ui: ui)

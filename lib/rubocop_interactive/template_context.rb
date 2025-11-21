@@ -7,11 +7,13 @@ module RubocopInteractive
   class TemplateContext
     attr_accessor :total_offenses, :offense_number, :cop_name, :message,
                   :file_path, :line, :column, :length, :patch_lines, :patch_start_line,
-                  :correctable, :safe_autocorrect, :available_actions, :state, :active
+                  :correctable, :safe_autocorrect, :available_actions, :state, :active,
+                  :colorizer
 
     def initialize(attrs = {})
       attrs.each { |k, v| send("#{k}=", v) }
       @available_actions = []
+      @colorizer ||= Color
     end
 
     def binding_for_erb
@@ -48,11 +50,11 @@ module RubocopInteractive
     def render_line_diff(old_color:, new_color:, context_color:)
       patch_lines.map do |patch_line|
         if patch_line.start_with?('-')
-          Color.colorize(patch_line, old_color)
+          colorizer.colorize(patch_line, old_color)
         elsif patch_line.start_with?('+')
-          Color.colorize(patch_line, new_color)
+          colorizer.colorize(patch_line, new_color)
         elsif context_color
-          Color.colorize(patch_line, context_color)
+          colorizer.colorize(patch_line, context_color)
         else
           patch_line
         end
@@ -88,13 +90,13 @@ module RubocopInteractive
           current_line += 1
           i += 2
         elsif line.start_with?('-')
-          result << "#{line_num_str}#{Color.colorize(line, old_color)}"
+          result << "#{line_num_str}#{colorizer.colorize(line, old_color)}"
           current_line += 1
           i += 1
         elsif line.start_with?('+')
           # Added lines don't increment line number (they're inserted)
           add_line_str = line_numbers ? '     ' : ''
-          result << "#{add_line_str}#{Color.colorize(line, new_color)}"
+          result << "#{add_line_str}#{colorizer.colorize(line, new_color)}"
           i += 1
         elsif context_color
           result << "#{line_num_str}#{apply_context_color(line, context_color)}"
@@ -112,9 +114,9 @@ module RubocopInteractive
 
     def apply_context_color(text, color)
       if color == :dim
-        Color.dim(text)
+        colorizer.dim(text)
       else
-        Color.colorize(text, color)
+        colorizer.colorize(text, color)
       end
     end
 
@@ -128,18 +130,18 @@ module RubocopInteractive
         case change.action
         when '='
           # Unchanged - show in dim base color
-          old_result << Color.colorize(change.old_element, old_color)
-          new_result << Color.colorize(change.new_element, new_color)
+          old_result << colorizer.colorize(change.old_element, old_color)
+          new_result << colorizer.colorize(change.new_element, new_color)
         when '!'
           # Changed - bold highlight
-          old_result << Color.colorize(change.old_element, old_color, bold: true)
-          new_result << Color.colorize(change.new_element, new_color, bold: true)
+          old_result << colorizer.colorize(change.old_element, old_color, bold: true)
+          new_result << colorizer.colorize(change.new_element, new_color, bold: true)
         when '-'
           # Deleted - bold highlight
-          old_result << Color.colorize(change.old_element, old_color, bold: true)
+          old_result << colorizer.colorize(change.old_element, old_color, bold: true)
         when '+'
           # Added - bold highlight
-          new_result << Color.colorize(change.new_element, new_color, bold: true)
+          new_result << colorizer.colorize(change.new_element, new_color, bold: true)
         end
       end
 
@@ -160,16 +162,16 @@ module RubocopInteractive
           # Changed - show old crossed out, then new
           old_char = show_spaces && change.old_element == ' ' ? show_spaces : change.old_element
           new_char = show_spaces && change.new_element == ' ' ? show_spaces : change.new_element
-          result << Color.colorize(old_char, old_color, bold: true)
-          result << Color.colorize(new_char, new_color, bold: true)
+          result << colorizer.colorize(old_char, old_color, bold: true)
+          result << colorizer.colorize(new_char, new_color, bold: true)
         when '-'
           # Deleted
           char = show_spaces && change.old_element == ' ' ? show_spaces : change.old_element
-          result << Color.colorize(char, old_color, bold: true)
+          result << colorizer.colorize(char, old_color, bold: true)
         when '+'
           # Added
           char = show_spaces && change.new_element == ' ' ? show_spaces : change.new_element
-          result << Color.colorize(char, new_color, bold: true)
+          result << colorizer.colorize(char, new_color, bold: true)
         end
       end
 
@@ -186,17 +188,17 @@ module RubocopInteractive
 
     # Helper: colored text
     def color(text, color_name, bold: false)
-      Color.colorize(text, color_name, bold: bold)
+      colorizer.colorize(text, color_name, bold: bold)
     end
 
     # Helper: bold text
     def bold(text)
-      Color.bold(text)
+      colorizer.bold(text)
     end
 
     # Helper: dim text
     def dim(text)
-      Color.dim(text)
+      colorizer.dim(text)
     end
 
     # Helper: italic text
@@ -209,8 +211,8 @@ module RubocopInteractive
     # Helper: state indicator for offense
     def state_indicator
       case state
-      when :corrected then Color.green('[CORRECTED]')
-      when :disabled then Color.yellow('[DISABLED]')
+      when :corrected then colorizer.green('[CORRECTED]')
+      when :disabled then colorizer.yellow('[DISABLED]')
       else ''
       end
     end
@@ -227,7 +229,7 @@ module RubocopInteractive
       # Build caret indicator
       caret_length = length || 1
       caret_col = column || 1
-      caret_line = ' ' * (caret_col - 1) + Color.yellow('^' * caret_length)
+      caret_line = ' ' * (caret_col - 1) + colorizer.yellow('^' * caret_length)
 
       "#{source_line}\n#{caret_line}"
     end
@@ -241,7 +243,7 @@ module RubocopInteractive
         if safe_autocorrect
           options << '[a]pply'
         else
-          options << Color.yellow('[A]pply unsafe')
+          options << colorizer.yellow('[A]pply unsafe')
         end
         options << '[p]atch'
       end

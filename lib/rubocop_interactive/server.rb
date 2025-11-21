@@ -3,6 +3,9 @@
 module RubocopInteractive
   # Manages RuboCop server for fast autocorrection
   class Server
+    SLEEP_TIME = 0.1
+    PATIENCE = 10
+
     def initialize
       @started = false
     end
@@ -15,20 +18,21 @@ module RubocopInteractive
 
     def running?
       # Check if rubocop server is running
-      system('rubocop --server-status', out: File::NULL, err: File::NULL)
+      system("#{rubocop_binary} --server-status", out: File::NULL, err: File::NULL)
     end
 
     def start!
       return if running?
 
       # Start server in background
-      pid = spawn('rubocop --start-server', out: File::NULL, err: File::NULL)
+      pid = spawn("#{rubocop_binary} --start-server", out: File::NULL, err: File::NULL)
       Process.detach(pid)
 
       # Wait for server to be ready
-      10.times do
+      PATIENCE.times do
         break if running?
-        sleep 0.1
+
+        sleep SLEEP_TIME
       end
 
       @started = true
@@ -37,21 +41,14 @@ module RubocopInteractive
     def stop!
       return unless @started
 
-      system('rubocop --stop-server', out: File::NULL, err: File::NULL)
+      system("#{rubocop_binary} --stop-server", out: File::NULL, err: File::NULL)
       @started = false
     end
 
-    def autocorrect(file:, cop:, line:)
-      # Use rubocop to autocorrect just this one offense
-      # The --only flag limits to the specific cop
-      system(
-        'rubocop',
-        '--autocorrect',
-        '--only', cop,
-        file,
-        out: File::NULL,
-        err: File::NULL
-      )
+    private
+
+    def rubocop_binary
+      RubocopInteractive.config.rubocop_binary
     end
   end
 end
