@@ -56,6 +56,6 @@ class SessionTest < Minitest::Test
     session = RubocopInteractive::Session.new(fixture_json, ui: ui, server: server)
     session.run
 
-    assert_equal 3, ui.prompts_shown  # Only 3 prompts before quit
+    assert_equal 3, ui.prompts_shown # Only 3 prompts before quit
   end
 end

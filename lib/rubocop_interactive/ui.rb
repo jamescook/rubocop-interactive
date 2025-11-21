@@ -8,13 +8,14 @@ module RubocopInteractive
     ACTIONS = {
       'a' => :autocorrect_safe,
       'A' => :autocorrect_unsafe,
-      's' => :skip,  # Skip moves to next, exits on last
+      'L' => :correct_all,
+      's' => :skip, # Skip moves to next, exits on last
       'd' => :disable_line,
       'D' => :disable_file,
       'p' => :show_patch,
       'q' => :quit,
       '?' => :help,
-      "\u0003" => :interrupt  # Ctrl+C
+      "\u0003" => :interrupt # Ctrl+C
     }.freeze
 
     def initialize(input: nil, output: $stdout, confirm_patch: false, template: 'default', ansi: true, colorizer: nil)
@@ -32,8 +33,8 @@ module RubocopInteractive
       puts '-' * 40
     end
 
-    def show_offense(offense, index:, total:, state: :pending)
-      context = build_template_context(offense, index: index, total: total, state: state)
+    def show_offense(offense, index:, total:, state: :pending, cop_count: nil)
+      context = build_template_context(offense, index: index, total: total, state: state, cop_count: cop_count)
       output = @renderer.render(context)
 
       # Print everything except the prompt (last line)
@@ -57,7 +58,7 @@ module RubocopInteractive
         print @colorizer.red(" #{error_msg}") if error_msg
 
         input = read_input
-        error_msg = nil  # Clear error for next iteration
+        error_msg = nil # Clear error for next iteration
 
         # Handle navigation (arrow keys return symbols)
         if input == :prev || input == :next
@@ -67,7 +68,7 @@ module RubocopInteractive
         action = ACTIONS[input]
 
         if action == :help
-          puts  # Move to new line before help
+          puts # Move to new line before help
           show_help(offense)
           next
         end
@@ -83,8 +84,19 @@ module RubocopInteractive
           end
         end
 
+        # Handle correct_all with confirmation
+        if action == :correct_all
+          print "#{input}\n" # Echo the keypress
+          if confirm_correct_all(offense)
+            return action
+          else
+            # User cancelled, stay on current offense
+            next
+          end
+        end
+
         if action
-          print "#{input}\n"  # Echo the keypress and move to new line
+          print "#{input}\n" # Echo the keypress and move to new line
           return action
         end
 
@@ -110,6 +122,26 @@ module RubocopInteractive
       clear_line
       print @colorizer.yellow("Press 'A' (capital) for unsafe autocorrect")
       beep
+    end
+
+    def confirm_correct_all(offense)
+      puts "Correct ALL remaining instances of #{@colorizer.yellow(offense.cop_name)}?"
+      print "Are you sure? [[y]es / [n]o]: "
+
+      loop do
+        input = read_input
+        case input
+        when 'y', 'Y'
+          puts 'y'
+          return true
+        when 'n', 'N', 's', 'q' # n, s(skip), q(quit) all mean no
+          puts 'n'
+          return false
+        else
+          clear_line
+          print "Are you sure? [[y]es / [n]o]: #{@colorizer.red('(y/n)')}: "
+        end
+      end
     end
 
     def show_patch(offense)
@@ -188,19 +220,30 @@ module RubocopInteractive
     def show_help(offense)
       puts
       puts 'Actions:'
-      puts '  a - Autocorrect this offense' if offense.correctable?
+      if offense.correctable?
+        if offense.safe_autocorrect?
+          puts '  a - Autocorrect this offense'
+        else
+          puts '  A - Autocorrect this offense (unsafe)'
+        end
+        puts '  p - Show patch preview'
+        puts '  L - Correct ALL remaining instances of this cop'
+      end
       puts '  s - Skip this offense'
       puts '  d - Disable cop for this line'
       puts '  D - Disable cop for entire file'
+      puts '  </> or arrow keys - Navigate between offenses'
       puts '  q - Quit'
+      puts '  ? - Show this help'
       puts
     end
 
-    def build_template_context(offense, index:, total:, state: :pending)
+    def build_template_context(offense, index:, total:, state: :pending, cop_count: nil)
       TemplateContext.new(
         total_offenses: total,
         offense_number: index + 1,
         cop_name: offense.cop_name,
+        cop_count: cop_count,
         message: offense.message,
         file_path: offense.file_path,
         line: offense.line,

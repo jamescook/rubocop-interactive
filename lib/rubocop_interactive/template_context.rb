@@ -5,7 +5,7 @@ require 'erb'
 module RubocopInteractive
   # Provides context and helpers for ERB templates
   class TemplateContext
-    attr_accessor :total_offenses, :offense_number, :cop_name, :message,
+    attr_accessor :total_offenses, :offense_number, :cop_name, :cop_count, :message,
                   :file_path, :line, :column, :length, :patch_lines, :patch_start_line,
                   :correctable, :safe_autocorrect, :available_actions, :state, :active,
                   :colorizer
@@ -74,8 +74,8 @@ module RubocopInteractive
 
         if line.start_with?('-') && i + 1 < patch_lines.size && patch_lines[i + 1].start_with?('+')
           # Pair of old/new lines - do inline diff
-          old_line = line[1..].chomp  # Remove leading -
-          new_line = patch_lines[i + 1][1..].chomp  # Remove leading +
+          old_line = line[1..].chomp # Remove leading -
+          new_line = patch_lines[i + 1][1..].chomp # Remove leading +
 
           if merge
             # Single merged line with strikethrough-style display
@@ -201,6 +201,10 @@ module RubocopInteractive
       colorizer.dim(text)
     end
 
+    def yellow(text)
+      colorizer.yellow(text)
+    end
+
     # Helper: italic text
     def italic(text)
       return text unless $stdout.tty?
@@ -255,6 +259,7 @@ module RubocopInteractive
           options << colorizer.yellow('[A]pply unsafe')
         end
         options << '[p]atch'
+        options << '[L] correct all'
       end
 
       options << '[s]kip'

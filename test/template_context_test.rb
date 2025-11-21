@@ -81,7 +81,7 @@ class TemplateContextTest < Minitest::Test
     # foo -> bar means f->b, o->a, o->r, so output is "fboaor"
     assert_includes result, 'f'
     assert_includes result, 'b'
-    assert_includes result, ' = 1'  # unchanged part
+    assert_includes result, ' = 1' # unchanged part
   end
 
   def test_patch_inline_merge_with_show_spaces
@@ -141,7 +141,7 @@ class TemplateContextTest < Minitest::Test
         file_path: file_path,
         line: 1,
         column: 1,
-        length: 1200,  # Very long offense
+        length: 1200, # Very long offense
         colorizer: RubocopInteractive::NoopColorizer
       )
 
@@ -150,7 +150,7 @@ class TemplateContextTest < Minitest::Test
       # Should contain carets but truncated
       assert_includes highlight, '^' * 80
       assert_includes highlight, '[1120 more characters]'
-      refute_includes highlight, '^' * 100  # Should not have more than 80 carets
+      refute_includes highlight, '^' * 100 # Should not have more than 80 carets
     end
   end
 
@@ -163,7 +163,7 @@ class TemplateContextTest < Minitest::Test
         file_path: file_path,
         line: 1,
         column: 1,
-        length: 5,  # Short offense
+        length: 5, # Short offense
         colorizer: RubocopInteractive::NoopColorizer
       )
 

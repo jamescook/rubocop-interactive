@@ -46,13 +46,22 @@ class FakeUI
     # no-op
   end
 
-  def show_offense(offense, index:, total:, state: :pending)
+  def show_offense(offense, index:, total:, state: :pending, cop_count: nil)
     @offenses_shown << offense
   end
 
   def prompt_for_action(_offense, state: :pending)
     @prompts_shown += 1
-    @responses.shift || :skip
+    action = @responses.shift || :skip
+
+    # If action is correct_all, consume the next response as confirmation
+    if action == :correct_all
+      confirmation = @responses.shift
+      # If confirmation is not yes, return skip instead
+      return :skip unless confirmation == :confirm_yes
+    end
+
+    action
   end
 
   def show_stats(_stats)
@@ -61,6 +70,10 @@ class FakeUI
 
   def beep
     # no-op
+  end
+
+  def beeped?
+    false
   end
 end
 

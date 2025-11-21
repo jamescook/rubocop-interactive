@@ -6,13 +6,15 @@ require_relative 'temp_file'
 
 module RubocopInteractive
   # Performs actions on offenses (autocorrect, skip, disable)
-  module Actions
+  module Actions # rubocop:disable Metrics/ModuleLength
     module_function
 
     def perform(action, offense)
       case action
       when :autocorrect
         autocorrect(offense)
+      when :correct_all
+        correct_all(offense)
       when :disable_line
         disable_line(offense)
       when :disable_file
@@ -22,6 +24,20 @@ module RubocopInteractive
       else
         nil
       end
+    end
+
+    def correct_all(offenses)
+      # Takes an array of offenses of the same cop type
+      # Autocorrects each one individually (not all instances in files)
+      return { status: :skipped } if offenses.empty?
+
+      # Process offenses in reverse order (last line first) to preserve line numbers
+      # as we make corrections
+      offenses.sort_by(&:line).reverse.each do |offense|
+        autocorrect(offense)
+      end
+
+      { status: :corrected }
     end
 
     def autocorrect(offense)

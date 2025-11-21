@@ -10,6 +10,7 @@ module RubocopInteractive
       @server = server
       @all_offenses = parse_all_offenses(json)
       @stats = { corrected: 0, disabled: 0 }
+      rebuild_cop_counts
     end
 
     def offenses
@@ -26,7 +27,8 @@ module RubocopInteractive
         offense = @all_offenses[index]
 
         if needs_redraw
-          @ui.show_offense(offense, index: index, total: @all_offenses.size, state: :pending)
+          cop_count = @cop_counts[offense.cop_name] || 0
+          @ui.show_offense(offense, index: index, total: @all_offenses.size, state: :pending, cop_count: cop_count)
         end
         needs_redraw = true
 
@@ -83,6 +85,35 @@ module RubocopInteractive
           action = :autocorrect
         end
 
+        # Handle correct_all specially - it needs all remaining offenses of this cop
+        if action == :correct_all
+          # Collect only offenses from current position forward (don't touch already-skipped ones)
+          remaining_of_cop = @all_offenses[index..].select { |o| o.cop_name == offense.cop_name }
+
+          result = Actions.perform(action, remaining_of_cop)
+          if result
+            # Track each corrected offense
+            remaining_of_cop.each { track_result(:corrected) }
+
+            # Rescan all affected files
+            affected_files = remaining_of_cop.map(&:file_path).uniq
+            affected_files.each { |file| rescan_file(file) }
+
+            # Rebuild cop counts after rescan
+            rebuild_cop_counts
+
+            # Exit if no offenses remain
+            if @all_offenses.empty?
+              @ui.show_stats(@stats)
+              return @stats
+            end
+
+            # Clamp index to valid range (in case we removed offenses)
+            index = [index, @all_offenses.size - 1].min
+            next
+          end
+        end
+
         # Other actions (autocorrect, disable)
         result = Actions.perform(action, offense)
         if result
@@ -91,6 +122,9 @@ module RubocopInteractive
           # Re-scan file to get fresh offense list
           # This handles: fixes that resolve multiple offenses, or introduce new ones
           rescan_file(offense.file_path)
+
+          # Rebuild cop counts after rescan
+          rebuild_cop_counts
 
           # Exit if no offenses remain
           if @all_offenses.empty?
@@ -144,6 +178,10 @@ module RubocopInteractive
       when :corrected then @stats[:corrected] += 1
       when :disabled then @stats[:disabled] += 1
       end
+    end
+
+    def rebuild_cop_counts
+      @cop_counts = @all_offenses.group_by(&:cop_name).transform_values(&:count)
     end
 
     def rescan_file(file_path)
