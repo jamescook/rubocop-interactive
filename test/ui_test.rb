@@ -130,6 +130,89 @@ class UITest < Minitest::Test
     assert_includes output_text, 'unsafe autocorrect'
   end
 
+  def test_interrupt_requires_double_ctrl_c_to_quit
+    offense = create_offense
+
+    # First Ctrl+C - should show warning
+    input = StringIO.new("\u0003s")
+    ui = RubocopInteractive::UI.new(input: input, output: @output, colorizer: RubocopInteractive::NoopColorizer)
+
+    action = ui.prompt_for_action(offense)
+
+    # Should show warning and return :skip (not quit)
+    output_text = @output.string
+    assert_includes output_text, 'Press Ctrl+C again'
+    assert_equal :skip, action
+  end
+
+  def test_double_interrupt_quits
+    offense = create_offense
+
+    # Two Ctrl+C in quick succession - should quit
+    # Note: The actual double-press timing logic is hard to test in unit tests
+    # This tests the code path, but the real-world behavior depends on timing
+    input = StringIO.new("\u0003\u0003")
+    ui = RubocopInteractive::UI.new(input: input, output: @output, colorizer: RubocopInteractive::NoopColorizer)
+
+    action = ui.prompt_for_action(offense)
+
+    # Should eventually quit (after seeing first interrupt, second triggers quit)
+    assert_equal :quit, action
+  end
+
+  def test_confirm_correct_all_with_yes
+    offense = create_offense
+
+    # Simulate 'y' response
+    input = StringIO.new("y")
+    ui = RubocopInteractive::UI.new(input: input, output: @output, colorizer: RubocopInteractive::NoopColorizer)
+
+    result = ui.confirm_correct_all(offense)
+
+    assert_equal true, result
+    output_text = @output.string
+    assert_includes output_text, 'Correct ALL remaining instances'
+    assert_includes output_text, offense.cop_name
+  end
+
+  def test_confirm_correct_all_with_no
+    offense = create_offense
+
+    # Simulate 'n' response
+    input = StringIO.new("n")
+    ui = RubocopInteractive::UI.new(input: input, output: @output, colorizer: RubocopInteractive::NoopColorizer)
+
+    result = ui.confirm_correct_all(offense)
+
+    assert_equal false, result
+  end
+
+  def test_confirm_correct_all_accepts_skip_as_no
+    offense = create_offense
+
+    # Simulate 's' response (should be treated as 'no')
+    input = StringIO.new("s")
+    ui = RubocopInteractive::UI.new(input: input, output: @output, colorizer: RubocopInteractive::NoopColorizer)
+
+    result = ui.confirm_correct_all(offense)
+
+    assert_equal false, result
+  end
+
+  def test_confirm_correct_all_shows_error_for_invalid_input
+    offense = create_offense
+
+    # Simulate invalid input 'x', then 'n'
+    input = StringIO.new("xn")
+    ui = RubocopInteractive::UI.new(input: input, output: @output, colorizer: RubocopInteractive::NoopColorizer)
+
+    result = ui.confirm_correct_all(offense)
+
+    assert_equal false, result
+    output_text = @output.string
+    assert_includes output_text, '(y/n)'
+  end
+
   private
 
   def create_offense(correctable: true)

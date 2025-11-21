@@ -44,20 +44,3 @@ class FakeUI
     false
   end
 end
-
-# Fake Server for testing
-class FakeServer
-  attr_reader :autocorrect_calls
-
-  def initialize
-    @autocorrect_calls = []
-  end
-
-  def ensure_running!
-    # no-op
-  end
-
-  def autocorrect(file:, cop:, line:)
-    @autocorrect_calls << { file: file, cop: cop, line: line }
-  end
-end

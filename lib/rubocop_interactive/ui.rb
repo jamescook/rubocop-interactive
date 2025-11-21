@@ -262,19 +262,5 @@ module RubocopInteractive
         colorizer: @colorizer
       )
     end
-
-    def build_code_context_lines(offense)
-      return [] unless File.exist?(offense.file_path)
-
-      lines = File.readlines(offense.file_path)
-      start_line = [offense.line - 2, 0].max
-      end_line = [offense.line + 1, lines.size - 1].min
-
-      (start_line..end_line).map do |i|
-        line_num = i + 1
-        prefix = line_num == offense.line ? '> ' : '  '
-        "#{prefix}#{line_num.to_s.rjust(4)}: #{lines[i]}"
-      end
-    end
   end
 end

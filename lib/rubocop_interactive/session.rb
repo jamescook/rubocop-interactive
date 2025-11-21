@@ -5,9 +5,8 @@ module RubocopInteractive
   class Session
     attr_reader :stats
 
-    def initialize(json, ui: UI.new, server: Server.new)
+    def initialize(json, ui: UI.new)
       @ui = ui
-      @server = server
       @all_offenses = parse_all_offenses(json)
       @stats = { corrected: 0, disabled: 0 }
       rebuild_cop_counts

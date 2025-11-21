@@ -25,9 +25,8 @@ class SessionCorrectAllTest < Minitest::Test
       # Simulate: user presses 'L' on first offense, confirms with 'y'
       responses = [:correct_all, :confirm_yes, :quit]
       ui = FakeUI.new(responses: responses)
-      server = FakeServer.new
 
-      session = RubocopInteractive::Session.new(json_data, ui: ui, server: server)
+      session = RubocopInteractive::Session.new(json_data, ui: ui)
       stats = session.run
 
       # All 3 StringLiterals should be corrected in one go
@@ -59,9 +58,8 @@ class SessionCorrectAllTest < Minitest::Test
       # User presses 'L' but then says 'n' to confirmation
       responses = [:correct_all, :confirm_no, :skip, :quit]
       ui = FakeUI.new(responses: responses)
-      server = FakeServer.new
 
-      session = RubocopInteractive::Session.new(json_data, ui: ui, server: server)
+      session = RubocopInteractive::Session.new(json_data, ui: ui)
       stats = session.run
 
       # Nothing should be corrected
@@ -88,9 +86,8 @@ class SessionCorrectAllTest < Minitest::Test
 
       responses = [:skip, :quit]
       ui = FakeUI.new(responses: responses)
-      server = FakeServer.new
 
-      session = RubocopInteractive::Session.new(json_data, ui: ui, server: server)
+      session = RubocopInteractive::Session.new(json_data, ui: ui)
       session.run
 
       # UI should not have been asked to show correct_all option
@@ -118,9 +115,8 @@ class SessionCorrectAllTest < Minitest::Test
       # This should leave "first" unchanged but correct "second" and "third"
       responses = [:skip, :correct_all, :confirm_yes, :quit]
       ui = FakeUI.new(responses: responses)
-      server = FakeServer.new
 
-      session = RubocopInteractive::Session.new(json_data, ui: ui, server: server)
+      session = RubocopInteractive::Session.new(json_data, ui: ui)
       stats = session.run
 
       # Only 2 should be corrected (second and third), first was skipped

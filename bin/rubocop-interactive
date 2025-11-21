@@ -52,7 +52,7 @@ OptionParser.new do |opts|
   end
 
   opts.on('--summary-on-exit [BOOL]', TrueClass, 'Show summary on exit (default: false)') do |bool|
-    options[:summary_on_exit] = bool.nil? ? true : bool
+    options[:summary_on_exit] = bool.nil? || bool
   end
 
   opts.on('-h', '--help', 'Show this help') do

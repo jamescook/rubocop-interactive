@@ -10,7 +10,6 @@ require_relative 'rubocop_interactive/offense'
 require_relative 'rubocop_interactive/session'
 require_relative 'rubocop_interactive/actions'
 require_relative 'rubocop_interactive/ui'
-require_relative 'rubocop_interactive/server'
 require_relative 'rubocop_interactive/patch_generator'
 require_relative 'rubocop_interactive/template_context'
 require_relative 'rubocop_interactive/template_renderer'
@@ -22,10 +21,7 @@ module RubocopInteractive
   def self.start!(json, ui: nil, confirm_patch: false, template: 'default', summary_on_exit: false)
     ui ||= UI.new(confirm_patch: confirm_patch, template: template, summary_on_exit: summary_on_exit)
 
-    server = Server.new
-    server.ensure_running!
-
-    session = Session.new(json, ui: ui, server: server)
+    session = Session.new(json, ui: ui)
     session.run
   ensure
     TempFile.cleanup!

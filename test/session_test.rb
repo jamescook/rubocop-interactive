@@ -6,9 +6,8 @@ class SessionTest < Minitest::Test
 
   def test_parses_offenses_from_json
     ui = FakeUI.new
-    server = FakeServer.new
 
-    session = RubocopInteractive::Session.new(fixture_json, ui: ui, server: server)
+    session = RubocopInteractive::Session.new(fixture_json, ui: ui)
 
     assert_equal 17, session.offenses.size
     assert_equal 'Style/StringLiterals', session.offenses.first.cop_name
@@ -18,9 +17,8 @@ class SessionTest < Minitest::Test
     # Use skip to progress through all offenses without modifying files
     responses = Array.new(17, :skip)
     ui = FakeUI.new(responses: responses)
-    server = FakeServer.new
 
-    session = RubocopInteractive::Session.new(fixture_json, ui: ui, server: server)
+    session = RubocopInteractive::Session.new(fixture_json, ui: ui)
     session.run
 
     assert_equal 17, ui.prompts_shown
@@ -38,9 +36,8 @@ class SessionTest < Minitest::Test
       # With single-offense correction, counts may vary due to rescanning
       responses = [:autocorrect] + Array.new(50, :skip)
       ui = FakeUI.new(responses: responses)
-      server = FakeServer.new
 
-      session = RubocopInteractive::Session.new(json_data, ui: ui, server: server)
+      session = RubocopInteractive::Session.new(json_data, ui: ui)
       stats = session.run
 
       assert stats[:corrected] >= 1, "Should have corrected at least 1 offense"
@@ -50,9 +47,8 @@ class SessionTest < Minitest::Test
   def test_quit_stops_early
     responses = [:skip, :skip, :quit]
     ui = FakeUI.new(responses: responses)
-    server = FakeServer.new
 
-    session = RubocopInteractive::Session.new(fixture_json, ui: ui, server: server)
+    session = RubocopInteractive::Session.new(fixture_json, ui: ui)
     session.run
 
     assert_equal 3, ui.prompts_shown # Only 3 prompts before quit
