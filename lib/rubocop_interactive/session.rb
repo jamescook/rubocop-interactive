@@ -86,6 +86,13 @@ module RubocopInteractive
 
         # Handle correct_all specially - it needs all remaining offenses of this cop
         if action == :correct_all
+          # Can't correct all if the offense isn't correctable
+          if !offense.correctable?
+            @ui.beep
+            needs_redraw = false
+            next
+          end
+
           # Collect only offenses from current position forward (don't touch already-skipped ones)
           remaining_of_cop = @all_offenses[index..].select { |o| o.cop_name == offense.cop_name }
 
@@ -223,7 +230,7 @@ module RubocopInteractive
       $stderr = StringIO.new
 
       cli = RuboCop::CLI.new
-      cli.run(['--format', 'json', file_path])
+      cli.run(['--format', 'json', '--cache', 'false', file_path])
 
       output.string
     ensure

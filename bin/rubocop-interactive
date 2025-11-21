@@ -55,6 +55,11 @@ OptionParser.new do |opts|
     options[:summary_on_exit] = bool.nil? || bool
   end
 
+  # Undocumented option for recording keypresses (test development only)
+  opts.on('--record', 'Record keypresses to timestamped log file') do
+    options[:record_keypresses] = true
+  end
+
   opts.on('-h', '--help', 'Show this help') do
     puts opts
     exit
@@ -75,7 +80,7 @@ json = if ARGV.any?
 
          begin
            cli = RuboCop::CLI.new
-           cli.run(['--format', 'json'] + ARGV)
+           cli.run(['--format', 'json', '--cache', 'false'] + ARGV)
          ensure
            $stdout = old_stdout
            $stderr = old_stderr

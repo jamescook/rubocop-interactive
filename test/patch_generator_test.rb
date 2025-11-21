@@ -159,4 +159,57 @@ class PatchGeneratorTest < Minitest::Test
     refute_match(/-.*hash\s*=/, result[:lines], "Should not show line 13 hash as deleted")
     refute_match(/\+.*hash\s*=/, result[:lines], "Should not show line 13 hash as added")
   end
+
+  def test_extract_window_with_added_line_after_target
+    # Regression test for Layout/EmptyLineAfterMagicComment
+    # When an offense inserts a line AFTER the target line, we need to find it correctly
+    original = [
+      "# frozen_string_literal: true\n",
+      "# Some comment\n",
+      "def foo\n"
+    ]
+
+    corrected = [
+      "# frozen_string_literal: true\n",
+      "\n",  # <- ADDED line
+      "# Some comment\n",
+      "def foo\n"
+    ]
+
+    # The offense is on line 2 (the line AFTER which we insert)
+    result = RubocopInteractive::PatchGenerator.extract_window(original, corrected, 2)
+
+    assert result, "Should find the added line affecting line 2"
+    assert_match(/\+\n/, result[:lines], "Should show the added blank line")
+    assert_match(/frozen_string_literal/, result[:lines], "Should include context")
+  end
+
+  def test_extract_window_one_line_becomes_multiple
+    # Regression test for Style/CommentedKeyword
+    # When one line is changed and additional lines are added (CHANGED + ADDED)
+    original = [
+      "# frozen_string_literal: true\n",
+      "\n",
+      "def Foo # comment\n",
+      "  42\n",
+      "end\n"
+    ]
+
+    corrected = [
+      "# frozen_string_literal: true\n",
+      "\n",
+      "# comment\n",  # <- CHANGED (old line becomes this)
+      "def Foo\n",    # <- ADDED
+      "  42\n",
+      "end\n"
+    ]
+
+    # The offense is on line 3
+    result = RubocopInteractive::PatchGenerator.extract_window(original, corrected, 3)
+
+    assert result, "Should find the change on line 3"
+    assert_match(/-def Foo # comment/, result[:lines], "Should show old line with comment")
+    assert_match(/\+# comment/, result[:lines], "Should show new comment line")
+    assert_match(/\+def Foo/, result[:lines], "Should show new def line (without comment)")
+  end
 end

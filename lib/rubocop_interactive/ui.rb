@@ -3,8 +3,26 @@
 require 'io/console'
 
 module RubocopInteractive
+  # Wrapper to record keypresses for test development
+  class RecordingInput
+    attr_reader :keypresses
+
+    def initialize(input)
+      @input = input
+      @keypresses = []
+    end
+
+    def getch
+      char = @input.getch
+      @keypresses << char if char
+      char
+    end
+  end
+
   # Handles terminal UI - can be replaced with a mock for testing
   class UI
+    attr_reader :recording_input
+
     ACTIONS = {
       'a' => :autocorrect_safe,
       'A' => :autocorrect_unsafe,
@@ -18,9 +36,18 @@ module RubocopInteractive
       "\u0003" => :interrupt # Ctrl+C
     }.freeze
 
-    def initialize(input: nil, output: $stdout, confirm_patch: false, template: 'default', ansi: true, colorizer: nil, summary_on_exit: false)
+    def initialize(input: nil, output: $stdout, confirm_patch: false, template: 'default', ansi: true, colorizer: nil, summary_on_exit: false, record_keypresses: false)
       # Use TTY for input when stdin is a pipe
-      @input = input || (File.open('/dev/tty') rescue $stdin)
+      input ||= (File.open('/dev/tty') rescue $stdin)
+
+      # Wrap input with recorder if requested
+      if record_keypresses
+        @recording_input = RecordingInput.new(input)
+        @input = @recording_input
+      else
+        @input = input
+      end
+
       @output = output
       @confirm_patch = confirm_patch
       @summary_on_exit = summary_on_exit

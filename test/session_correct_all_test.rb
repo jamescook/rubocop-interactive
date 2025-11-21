@@ -145,7 +145,7 @@ class SessionCorrectAllTest < Minitest::Test
 
     begin
       cli = RuboCop::CLI.new
-      cli.run(['--format', 'json', file_path])
+      cli.run(['--format', 'json', '--cache', 'false', file_path])
     ensure
       $stdout = old_stdout
       $stderr = old_stderr

@@ -18,12 +18,27 @@ require_relative 'rubocop_interactive/temp_file'
 module RubocopInteractive
   class Error < StandardError; end
 
-  def self.start!(json, ui: nil, confirm_patch: false, template: 'default', summary_on_exit: false)
-    ui ||= UI.new(confirm_patch: confirm_patch, template: template, summary_on_exit: summary_on_exit)
+  def self.start!(json, ui: nil, confirm_patch: false, template: 'default', summary_on_exit: false, record_keypresses: false)
+    ui ||= UI.new(confirm_patch: confirm_patch, template: template, summary_on_exit: summary_on_exit, record_keypresses: record_keypresses)
 
     session = Session.new(json, ui: ui)
-    session.run
+    stats = session.run
+
+    # Write keypress recording if enabled
+    if record_keypresses && ui.recording_input
+      write_keypress_log(ui.recording_input.keypresses)
+    end
+
+    stats
   ensure
     TempFile.cleanup!
+  end
+
+  def self.write_keypress_log(keypresses)
+    timestamp = Time.now.strftime('%Y%m%d_%H%M%S')
+    filename = "keystroke_record_#{timestamp}.log"
+
+    File.write(filename, keypresses.join)
+    puts "\nRecorded #{keypresses.size} keypresses to: #{filename}"
   end
 end

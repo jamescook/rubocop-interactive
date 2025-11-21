@@ -97,10 +97,17 @@ module RubocopInteractive
             # Change on the target line
             target_diff_idx = idx
             break
-          elsif change.action == ADDED && current_orig_line == 0 && target_line == 1
-            # Special case: addition before first line when targeting line 1
-            target_diff_idx = idx
-            break
+          elsif change.action == ADDED
+            # ADDED lines insert between current_orig_line and current_orig_line+1
+            # If target_line is the line AFTER this insertion, this is our change
+            if current_orig_line + 1 == target_line
+              target_diff_idx = idx
+              break
+            elsif current_orig_line == 0 && target_line == 1
+              # Special case: addition before first line when targeting line 1
+              target_diff_idx = idx
+              break
+            end
           end
         end
       end
@@ -108,16 +115,19 @@ module RubocopInteractive
       return nil unless target_diff_idx
 
       # Only include this specific change, not consecutive changes for other lines
-      # For CHANGED, this is just one diff entry
-      # For DELETED/ADDED pairs on the same conceptual line, include both
+      # For simple CHANGED, this is just one diff entry
+      # For DELETED/CHANGED followed by ADDED lines, include all consecutive ADDED lines
+      # This handles cases like Style/CommentedKeyword where one line becomes multiple
       change_start = target_diff_idx
       change_end = target_diff_idx
 
-      # If this is a DELETED followed by ADDED, include the ADDED
-      if diffs[target_diff_idx].action == DELETED &&
-         target_diff_idx + 1 < diffs.size &&
-         diffs[target_diff_idx + 1].action == ADDED
-        change_end = target_diff_idx + 1
+      # If this is a DELETED or CHANGED followed by ADDED line(s), include ALL consecutive ADDED lines
+      if [DELETED, CHANGED].include?(diffs[target_diff_idx].action)
+        idx = target_diff_idx + 1
+        while idx < diffs.size && diffs[idx].action == ADDED
+          change_end = idx
+          idx += 1
+        end
       end
 
       # Add context lines before and after (stop at other changes)
