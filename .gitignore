@@ -4,9 +4,6 @@ coverage/
 # Temporary files
 tmp/
 
-# Bundler
-Gemfile.lock
-
 # RubyGems
 *.gem
 
