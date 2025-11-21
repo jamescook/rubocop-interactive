@@ -107,7 +107,7 @@ module RubocopInteractive
       if current_line.include?('rubocop:disable') && current_line.include?(offense.cop_name)
         # Already disabled - don't add duplicate
         { status: :disabled }
-      elsif current_line.include?("rubocop:disable")
+      elsif current_line.include?('rubocop:disable')
         # Already has a disable directive - append this cop to it
         lines[line_index] = current_line.sub(
           /(# rubocop:disable [^\n]+)/,

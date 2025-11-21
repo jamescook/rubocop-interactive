@@ -1,0 +1,56 @@
+# RuboCop configuration for rubocop-interactive
+
+AllCops:
+  TargetRubyVersion: 3.1
+  NewCops: enable
+  Exclude:
+    - 'vendor/**/*'
+    - 'tmp/**/*'
+    - 'coverage/**/*'
+    - 'test/fixtures/**/*'
+    - 'stress_test.rb'
+
+# We're building a CLI tool, so some metrics are expected to be higher
+Metrics/ClassLength:
+  Max: 150
+
+Metrics/ModuleLength:
+  Exclude:
+    - 'lib/rubocop_interactive/color.rb'
+
+Metrics/MethodLength:
+  Max: 50
+
+Metrics/AbcSize:
+  Max: 40
+
+Metrics/CyclomaticComplexity:
+  Max: 15
+
+Metrics/PerceivedComplexity:
+  Max: 15
+
+# Allow longer blocks in tests
+Metrics/BlockLength:
+  Exclude:
+    - 'test/**/*'
+    - '*.gemspec'
+
+# Style preferences
+Style/StringLiterals:
+  EnforcedStyle: single_quotes
+
+Style/Documentation:
+  Enabled: false
+
+# Allow compact module/class definitions
+Style/ClassAndModuleChildren:
+  Enabled: false
+
+# Naming
+Naming/MethodParameterName:
+  MinNameLength: 2
+  AllowedNames:
+    - io
+    - id
+    - ui

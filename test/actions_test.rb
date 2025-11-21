@@ -21,7 +21,6 @@ class ActionsTest < Minitest::Test
 
       # Target the first StringLiterals offense on line 6
       offense = RubocopInteractive::Offense.new(file_path: file_path, data: @offense_data)
-      server = FakeServer.new
 
       result = RubocopInteractive::Actions.perform(:autocorrect, offense)
 
@@ -43,7 +42,6 @@ class ActionsTest < Minitest::Test
       file_path = File.join(dir, 'bad_code.rb')
       @offense_data['location']['start_line'] = 6
       offense = RubocopInteractive::Offense.new(file_path: file_path, data: @offense_data)
-      server = FakeServer.new
 
       result = RubocopInteractive::Actions.perform(:disable_line, offense)
 
@@ -58,7 +56,6 @@ class ActionsTest < Minitest::Test
     with_temp_fixture do |dir|
       file_path = File.join(dir, 'bad_code.rb')
       offense = RubocopInteractive::Offense.new(file_path: file_path, data: @offense_data)
-      server = FakeServer.new
 
       result = RubocopInteractive::Actions.perform(:disable_file, offense)
 
@@ -91,7 +88,6 @@ class ActionsTest < Minitest::Test
       }
 
       offense = RubocopInteractive::Offense.new(file_path: file_path, data: offense_data)
-      server = FakeServer.new
 
       result = RubocopInteractive::Actions.perform(:disable_line, offense)
 
@@ -125,7 +121,6 @@ class ActionsTest < Minitest::Test
       }
 
       offense = RubocopInteractive::Offense.new(file_path: file_path, data: offense_data)
-      server = FakeServer.new
 
       result = RubocopInteractive::Actions.perform(:disable_line, offense)
 

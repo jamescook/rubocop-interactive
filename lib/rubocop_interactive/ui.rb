@@ -130,9 +130,8 @@ module RubocopInteractive
         old_color: :red,
         new_color: :green,
         context_color: :dim,
-        inline: true,
-        merge: true,
-        show_spaces: '█',
+        inline: false,
+        merge: false,
         line_numbers: true
       )
     end
