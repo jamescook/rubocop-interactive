@@ -1,0 +1,23 @@
+<%= dim(separator(char: '─', width: 100)) %>
+[<%= offense_number %>/<%= total_offenses %>] <%= bold(cop_name) %> (<%= yellow(cop_count) %>) <%= dim(location) %> <%= state_indicator %>
+  <%= italic(message) %>
+
+<%= offense_highlight %>
+<%# Example of building a custom prompt using predicate helpers -%>
+<% if can_autocorrect? -%>
+  <% if is_safe_autocorrect? -%>
+✓ [a]pply
+  <% else -%>
+⚠ <%= yellow('[A]pply (unsafe)') %>
+  <% end -%>
+👁 [p]atch
+⚡ [L] correct all
+<% end -%>
+⏭ [s]kip
+<% if can_disable? -%>
+🚫 [d]isable line
+🚫 [D]isable file
+<% end -%>
+❌ [q]uit
+❓ [?]help
+← → nav >

@@ -19,8 +19,8 @@ require_relative 'rubocop_interactive/temp_file'
 module RubocopInteractive
   class Error < StandardError; end
 
-  def self.start!(json, ui: nil, confirm_patch: false, template: 'default')
-    ui ||= UI.new(confirm_patch: confirm_patch, template: template)
+  def self.start!(json, ui: nil, confirm_patch: false, template: 'default', summary_on_exit: false)
+    ui ||= UI.new(confirm_patch: confirm_patch, template: template, summary_on_exit: summary_on_exit)
 
     server = Server.new
     server.ensure_running!

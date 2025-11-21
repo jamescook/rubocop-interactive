@@ -256,7 +256,8 @@ class CalculatorE2ETest < Minitest::Test
     ui = RubocopInteractive::UI.new(
       input: input,
       output: output,
-      confirm_patch: false
+      confirm_patch: false,
+      summary_on_exit: true
       # Use default template to test output format
     )
 

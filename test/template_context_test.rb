@@ -174,4 +174,70 @@ class TemplateContextTest < Minitest::Test
       refute_includes highlight, 'more characters'
     end
   end
+
+  def test_predicate_helpers_for_correctable_safe
+    context = RubocopInteractive::TemplateContext.new(
+      correctable: true,
+      safe_autocorrect: true,
+      state: :pending,
+      colorizer: RubocopInteractive::NoopColorizer
+    )
+
+    assert context.can_autocorrect?
+    assert context.can_disable?
+    assert context.is_pending?
+    assert context.is_safe_autocorrect?
+  end
+
+  def test_predicate_helpers_for_correctable_unsafe
+    context = RubocopInteractive::TemplateContext.new(
+      correctable: true,
+      safe_autocorrect: false,
+      state: :pending,
+      colorizer: RubocopInteractive::NoopColorizer
+    )
+
+    assert context.can_autocorrect?
+    assert context.can_disable?
+    assert context.is_pending?
+    refute context.is_safe_autocorrect?
+  end
+
+  def test_predicate_helpers_for_non_correctable
+    context = RubocopInteractive::TemplateContext.new(
+      correctable: false,
+      state: :pending,
+      colorizer: RubocopInteractive::NoopColorizer
+    )
+
+    refute context.can_autocorrect?
+    assert context.can_disable?
+    assert context.is_pending?
+  end
+
+  def test_predicate_helpers_for_corrected_state
+    context = RubocopInteractive::TemplateContext.new(
+      correctable: true,
+      state: :corrected,
+      colorizer: RubocopInteractive::NoopColorizer
+    )
+
+    refute context.can_autocorrect? # Not pending
+    refute context.can_disable? # Not pending
+    refute context.is_pending?
+  end
+
+  def test_default_prompt_helper
+    context = RubocopInteractive::TemplateContext.new(
+      correctable: true,
+      safe_autocorrect: true,
+      state: :pending,
+      colorizer: RubocopInteractive::NoopColorizer
+    )
+
+    prompt = context.default_prompt
+    assert_includes prompt, '[a]pply'
+    assert_includes prompt, '[L] correct all'
+    assert_includes prompt, '[s]kip'
+  end
 end

@@ -180,10 +180,33 @@ module RubocopInteractive
 
     public
 
-    # Helper: render command palette
+    # Helper: render command palette (default implementation)
     def prompt
+      default_prompt
+    end
+
+    # Helper: default prompt implementation
+    def default_prompt
       options = build_prompt_options
       "#{options.join(' ')} "
+    end
+
+    # Predicate helpers for building custom prompts in templates
+
+    def can_autocorrect?
+      correctable && state == :pending
+    end
+
+    def can_disable?
+      state == :pending
+    end
+
+    def is_pending?
+      state == :pending
+    end
+
+    def is_safe_autocorrect?
+      safe_autocorrect
     end
 
     # Helper: colored text
@@ -267,7 +290,7 @@ module RubocopInteractive
       options << '[D]isable file' if state == :pending
       options << '[q]uit'
       options << '[?]help'
-      options << '[</>] nav'
+      options << '[←/→] nav'
       options
     end
   end

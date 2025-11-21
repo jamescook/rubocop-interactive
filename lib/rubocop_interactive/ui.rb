@@ -18,11 +18,12 @@ module RubocopInteractive
       "\u0003" => :interrupt # Ctrl+C
     }.freeze
 
-    def initialize(input: nil, output: $stdout, confirm_patch: false, template: 'default', ansi: true, colorizer: nil)
+    def initialize(input: nil, output: $stdout, confirm_patch: false, template: 'default', ansi: true, colorizer: nil, summary_on_exit: false)
       # Use TTY for input when stdin is a pipe
       @input = input || (File.open('/dev/tty') rescue $stdin)
       @output = output
       @confirm_patch = confirm_patch
+      @summary_on_exit = summary_on_exit
       @last_interrupt = nil
       @colorizer = colorizer || (ansi ? Color : NoopColorizer)
       @renderer = TemplateRenderer.new(template_name: template)
@@ -68,7 +69,7 @@ module RubocopInteractive
         action = ACTIONS[input]
 
         if action == :help
-          puts # Move to new line before help
+          echo_input(input)
           show_help(offense)
           next
         end
@@ -86,7 +87,7 @@ module RubocopInteractive
 
         # Handle correct_all with confirmation
         if action == :correct_all
-          print "#{input}\n" # Echo the keypress
+          echo_input(input)
           if confirm_correct_all(offense)
             return action
           else
@@ -96,7 +97,7 @@ module RubocopInteractive
         end
 
         if action
-          print "#{input}\n" # Echo the keypress and move to new line
+          echo_input(input)
           return action
         end
 
@@ -106,6 +107,8 @@ module RubocopInteractive
     end
 
     def show_stats(stats)
+      return unless @summary_on_exit
+
       puts
       puts '-' * 40
       puts 'Summary:'
@@ -132,10 +135,10 @@ module RubocopInteractive
         input = read_input
         case input
         when 'y', 'Y'
-          puts 'y'
+          puts @colorizer.cyan(@colorizer.bold('y'))
           return true
         when 'n', 'N', 's', 'q' # n, s(skip), q(quit) all mean no
-          puts 'n'
+          puts @colorizer.cyan(@colorizer.bold('n'))
           return false
         else
           clear_line
@@ -176,6 +179,10 @@ module RubocopInteractive
 
     def print(msg)
       @output.print(msg)
+    end
+
+    def echo_input(input)
+      print "#{@colorizer.cyan(@colorizer.bold(input))}\n"
     end
 
     def read_input
