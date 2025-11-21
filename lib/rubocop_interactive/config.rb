@@ -2,9 +2,9 @@
 
 module RubocopInteractive
   # Configuration for rubocop-interactive
-  Config = Struct.new(:rubocop_binary) do
+  Config = Struct.new(:rubocop_binary, :debug_preserve_temp) do
     def initialize
-      super('rubocop')
+      super('rubocop', false)
     end
   end
 

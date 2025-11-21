@@ -23,7 +23,7 @@ class ActionsTest < Minitest::Test
       offense = RubocopInteractive::Offense.new(file_path: file_path, data: @offense_data)
       server = FakeServer.new
 
-      result = RubocopInteractive::Actions.perform(:autocorrect, offense, server: server)
+      result = RubocopInteractive::Actions.perform(:autocorrect, offense)
 
       assert_equal :corrected, result[:status]
 
@@ -45,7 +45,7 @@ class ActionsTest < Minitest::Test
       offense = RubocopInteractive::Offense.new(file_path: file_path, data: @offense_data)
       server = FakeServer.new
 
-      result = RubocopInteractive::Actions.perform(:disable_line, offense, server: server)
+      result = RubocopInteractive::Actions.perform(:disable_line, offense)
 
       assert_equal :disabled, result[:status]
 
@@ -60,7 +60,7 @@ class ActionsTest < Minitest::Test
       offense = RubocopInteractive::Offense.new(file_path: file_path, data: @offense_data)
       server = FakeServer.new
 
-      result = RubocopInteractive::Actions.perform(:disable_file, offense, server: server)
+      result = RubocopInteractive::Actions.perform(:disable_file, offense)
 
       assert_equal :disabled, result[:status]
 
@@ -93,7 +93,7 @@ class ActionsTest < Minitest::Test
       offense = RubocopInteractive::Offense.new(file_path: file_path, data: offense_data)
       server = FakeServer.new
 
-      result = RubocopInteractive::Actions.perform(:disable_line, offense, server: server)
+      result = RubocopInteractive::Actions.perform(:disable_line, offense)
 
       assert_equal :disabled, result[:status]
 
@@ -127,7 +127,7 @@ class ActionsTest < Minitest::Test
       offense = RubocopInteractive::Offense.new(file_path: file_path, data: offense_data)
       server = FakeServer.new
 
-      result = RubocopInteractive::Actions.perform(:disable_line, offense, server: server)
+      result = RubocopInteractive::Actions.perform(:disable_line, offense)
 
       assert_equal :disabled, result[:status]
 
@@ -135,6 +135,39 @@ class ActionsTest < Minitest::Test
 
       # Should append to existing disable directive
       assert_match(/rubocop:disable Lint\/UselessAssignment, Style\/Something/, content)
+    end
+  end
+
+  def test_autocorrect_with_existing_rubocop_disable_comment
+    # Regression test: autocorrecting a file with rubocop:disable comments
+    # used to fail with "undefined method 'disabled' for nil" because
+    # ProcessedSource.registry was not set
+    Dir.mktmpdir do |dir|
+      file_path = File.join(dir, 'with_disable.rb')
+      File.write(file_path, <<~RUBY)
+        # frozen_string_literal: true
+
+        def foo
+          x = "test"  # rubocop:disable Lint/UselessAssignment
+        end
+      RUBY
+
+      offense_data = {
+        'cop_name' => 'Style/StringLiterals',
+        'message' => 'Prefer single-quoted strings',
+        'severity' => 'convention',
+        'correctable' => true,
+        'location' => { 'start_line' => 4, 'start_column' => 7, 'length' => 6 }
+      }
+
+      offense = RubocopInteractive::Offense.new(file_path: file_path, data: offense_data)
+
+      result = RubocopInteractive::Actions.perform(:autocorrect, offense)
+
+      assert_equal :corrected, result[:status]
+
+      corrected_content = File.read(file_path)
+      assert_match(/'test'/, corrected_content)
     end
   end
 end

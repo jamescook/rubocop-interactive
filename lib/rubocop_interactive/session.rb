@@ -84,7 +84,7 @@ module RubocopInteractive
         end
 
         # Other actions (autocorrect, disable)
-        result = Actions.perform(action, offense, server: @server)
+        result = Actions.perform(action, offense)
         if result
           track_result(result[:status])
 

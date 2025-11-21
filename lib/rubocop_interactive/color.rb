@@ -232,7 +232,7 @@ module RubocopInteractive
           ri = (r / 255.0 * 5).round
           gi = (g / 255.0 * 5).round
           bi = (b / 255.0 * 5).round
-          "38;5;#{16 + 36 * ri + 6 * gi + bi}"
+          "38;5;#{16 + (36 * ri) + 6 * gi + bi}"
         end
       end
     end

@@ -9,7 +9,7 @@ module RubocopInteractive
   module Actions
     module_function
 
-    def perform(action, offense, server:)
+    def perform(action, offense)
       case action
       when :autocorrect
         autocorrect(offense)
@@ -27,6 +27,13 @@ module RubocopInteractive
     def autocorrect(offense)
       original_content = File.read(offense.file_path)
 
+      # Debug: preserve temp file state before correction
+      if RubocopInteractive.config.debug_preserve_temp
+        debug_file = "#{offense.file_path}.debug-before-#{Time.now.to_i}"
+        File.write(debug_file, original_content)
+        warn "Debug: saved file state to #{debug_file}"
+      end
+
       # Use RuboCop's internal corrector API to fix just this one offense
       corrected_content = apply_single_correction(
         offense.file_path,
@@ -35,6 +42,13 @@ module RubocopInteractive
       )
 
       if corrected_content && corrected_content != original_content
+        # Debug: preserve corrected content
+        if RubocopInteractive.config.debug_preserve_temp
+          debug_file = "#{offense.file_path}.debug-after-#{Time.now.to_i}"
+          File.write(debug_file, corrected_content)
+          warn "Debug: saved corrected content to #{debug_file}"
+        end
+
         File.write(offense.file_path, corrected_content)
         { status: :corrected }
       else
@@ -50,15 +64,33 @@ module RubocopInteractive
       cop_class = RuboCop::Cop::Registry.global.find_by_cop_name(cop_name)
       return nil unless cop_class
 
-      registry = RuboCop::Cop::Registry.new([cop_class])
-      team = RuboCop::Cop::Team.mobilize(registry, config, autocorrect: true)
+      # Pass options to Registry.new to prevent nil registry methods
+      options = { autocorrect: true }
+      registry = RuboCop::Cop::Registry.new([cop_class], options)
+      team = RuboCop::Cop::Team.mobilize(registry, config, options)
 
       source = RuboCop::ProcessedSource.from_file(file_path, config.target_ruby_version)
-      result = team.investigate(source)
+      # Set registry and config on the processed source so CommentConfig can access them
+      source.registry = registry
+      source.config = config
+
+      # Capture errors during investigation
+      result = begin
+        team.investigate(source)
+      rescue => e
+        warn "Error during investigation: #{e.class}: #{e.message}" if RubocopInteractive.config.debug_preserve_temp
+        warn e.backtrace.first(5).join("\n") if RubocopInteractive.config.debug_preserve_temp
+        return nil
+      end
 
       # Find the specific offense at the target line
       target_offense = result.offenses.find do |o|
         o.line == target_line && o.cop_name == cop_name
+      end
+
+      if RubocopInteractive.config.debug_preserve_temp
+        warn "Debug: Found #{result.offenses.size} offenses, looking for #{cop_name} at line #{target_line}"
+        warn "Debug: Target offense: #{target_offense.inspect}"
       end
 
       return nil unless target_offense&.corrector
@@ -72,7 +104,7 @@ module RubocopInteractive
       line_index = offense.line - 1
       current_line = lines[line_index]
 
-      if current_line.include?("rubocop:disable") && current_line.include?(offense.cop_name)
+      if current_line.include?('rubocop:disable') && current_line.include?(offense.cop_name)
         # Already disabled - don't add duplicate
         { status: :disabled }
       elsif current_line.include?("rubocop:disable")

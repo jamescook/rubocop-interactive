@@ -32,6 +32,7 @@ OptionParser.new do |opts|
   opts.separator 'Examples:'
   opts.separator '  rubocop-interactive file.rb              # Run rubocop on file.rb'
   opts.separator '  rubocop --format json | rubocop-interactive  # Pipe from rubocop'
+  opts.separator '  rubocop-interactive --rubocop "bundle exec rubocop" lib/'
   opts.separator ''
 
   opts.on('--confirm-patch', 'Show patch preview before applying corrections') do
@@ -40,6 +41,14 @@ OptionParser.new do |opts|
 
   opts.on('--template NAME', 'Use a specific template (default, compact, or path to .erb)') do |name|
     options[:template] = name
+  end
+
+  opts.on('--rubocop COMMAND', 'RuboCop command to use (default: rubocop)') do |cmd|
+    RubocopInteractive.config.rubocop_binary = cmd
+  end
+
+  opts.on('--debug-preserve-temp', 'Preserve temp file states for debugging') do
+    RubocopInteractive.config.debug_preserve_temp = true
   end
 
   opts.on('-h', '--help', 'Show this help') do

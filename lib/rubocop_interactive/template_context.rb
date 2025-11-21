@@ -227,9 +227,18 @@ module RubocopInteractive
       source_line = lines[line - 1].chomp
 
       # Build caret indicator
+      # Cap caret length at 80 to avoid printing hundreds of carets for multi-line offenses
       caret_length = length || 1
       caret_col = column || 1
-      caret_line = ' ' * (caret_col - 1) + colorizer.yellow('^' * caret_length)
+
+      if caret_length > 80
+        remaining = caret_length - 80
+        carets = colorizer.yellow('^' * 80 + " [#{remaining} more characters]")
+      else
+        carets = colorizer.yellow('^' * caret_length)
+      end
+
+      caret_line = ' ' * (caret_col - 1) + carets
 
       "#{source_line}\n#{caret_line}"
     end

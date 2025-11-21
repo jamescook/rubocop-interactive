@@ -4,7 +4,7 @@ Gem::Specification.new do |spec|
   spec.name          = 'rubocop-interactive'
   spec.version       = '0.1.0'
   spec.authors       = ['James Cook']
-  spec.email         = ['james@example.com']
+  spec.email         = ['jcook.rubyist@gmail.com']
 
   spec.summary       = 'Interactive TUI for resolving RuboCop offenses one at a time'
   spec.description   = 'Pipe RuboCop JSON output to interactively review and fix offenses'
