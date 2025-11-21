@@ -377,4 +377,18 @@ class PatchRendererTest < Minitest::Test
 
     assert colorized, "Should have called colorizer for addition"
   end
+
+  def test_inline_merge_character_interleaving
+    # Verify character-level merge produces expected interleaving
+    patch_lines = ["-old\n", "+new\n"]
+    renderer = RubocopInteractive::PatchRenderer.new(
+      patch_lines: patch_lines,
+      colorizer: RubocopInteractive::NoopColorizer
+    )
+
+    result = renderer.render(inline: true, merge: true)
+
+    # 'o' unchanged, then 'ld' + 'ew' interleaved = "onledw"
+    assert_equal "onledw\n", result
+  end
 end

@@ -3,8 +3,81 @@
 require 'diff/lcs'
 
 module RubocopInteractive
-  # Renders patch data with various visualization options
+  # Renders patch data with various visualization options using Diff::LCS callbacks
   class PatchRenderer
+    # Callback handler for character-level diff highlighting
+    class CharacterHighlightCallbacks
+      attr_reader :old_result, :new_result
+
+      def initialize(colorizer:, old_color:, new_color:)
+        @colorizer = colorizer
+        @old_color = old_color
+        @new_color = new_color
+        @old_result = []
+        @new_result = []
+      end
+
+      def match(event)
+        # Unchanged - show in base color
+        @old_result << @colorizer.colorize(event.old_element, @old_color)
+        @new_result << @colorizer.colorize(event.new_element, @new_color)
+      end
+
+      def discard_a(event)
+        # Deleted - bold highlight
+        @old_result << @colorizer.colorize(event.old_element, @old_color, bold: true)
+      end
+
+      def discard_b(event)
+        # Added - bold highlight
+        @new_result << @colorizer.colorize(event.new_element, @new_color, bold: true)
+      end
+
+      def change(event)
+        # Changed - bold highlight both
+        @old_result << @colorizer.colorize(event.old_element, @old_color, bold: true)
+        @new_result << @colorizer.colorize(event.new_element, @new_color, bold: true)
+      end
+    end
+
+    # Callback handler for merged character-level diffs
+    class CharacterMergeCallbacks
+      attr_reader :result
+
+      def initialize(colorizer:, old_color:, new_color:, show_spaces: nil)
+        @colorizer = colorizer
+        @old_color = old_color
+        @new_color = new_color
+        @show_spaces = show_spaces
+        @result = []
+      end
+
+      def match(event)
+        # Unchanged
+        @result << event.old_element
+      end
+
+      def discard_a(event)
+        # Deleted
+        char = @show_spaces && event.old_element == ' ' ? @show_spaces : event.old_element
+        @result << @colorizer.colorize(char, @old_color, bold: true)
+      end
+
+      def discard_b(event)
+        # Added
+        char = @show_spaces && event.new_element == ' ' ? @show_spaces : event.new_element
+        @result << @colorizer.colorize(char, @new_color, bold: true)
+      end
+
+      def change(event)
+        # Changed - show old then new
+        old_char = @show_spaces && event.old_element == ' ' ? @show_spaces : event.old_element
+        new_char = @show_spaces && event.new_element == ' ' ? @show_spaces : event.new_element
+        @result << @colorizer.colorize(old_char, @old_color, bold: true)
+        @result << @colorizer.colorize(new_char, @new_color, bold: true)
+      end
+    end
+
     def initialize(patch_lines:, patch_start_line: 1, colorizer: Color)
       @patch_lines = patch_lines
       @patch_start_line = patch_start_line
@@ -95,61 +168,28 @@ module RubocopInteractive
     end
 
     def inline_highlight(old_str, new_str, old_color, new_color)
-      diffs = Diff::LCS.sdiff(old_str.chars, new_str.chars)
+      callbacks = CharacterHighlightCallbacks.new(
+        colorizer: @colorizer,
+        old_color: old_color,
+        new_color: new_color
+      )
 
-      old_result = []
-      new_result = []
+      Diff::LCS.traverse_sequences(old_str.chars, new_str.chars, callbacks)
 
-      diffs.each do |change|
-        case change.action
-        when '='
-          # Unchanged - show in dim base color
-          old_result << @colorizer.colorize(change.old_element, old_color)
-          new_result << @colorizer.colorize(change.new_element, new_color)
-        when '!'
-          # Changed - bold highlight
-          old_result << @colorizer.colorize(change.old_element, old_color, bold: true)
-          new_result << @colorizer.colorize(change.new_element, new_color, bold: true)
-        when '-'
-          # Deleted - bold highlight
-          old_result << @colorizer.colorize(change.old_element, old_color, bold: true)
-        when '+'
-          # Added - bold highlight
-          new_result << @colorizer.colorize(change.new_element, new_color, bold: true)
-        end
-      end
-
-      [old_result.join, new_result.join]
+      [callbacks.old_result.join, callbacks.new_result.join]
     end
 
     def inline_merge(old_str, new_str, old_color, new_color, show_spaces: nil)
-      diffs = Diff::LCS.sdiff(old_str.chars, new_str.chars)
+      callbacks = CharacterMergeCallbacks.new(
+        colorizer: @colorizer,
+        old_color: old_color,
+        new_color: new_color,
+        show_spaces: show_spaces
+      )
 
-      result = []
+      Diff::LCS.traverse_sequences(old_str.chars, new_str.chars, callbacks)
 
-      diffs.each do |change|
-        case change.action
-        when '='
-          # Unchanged
-          result << change.old_element
-        when '!'
-          # Changed - show old crossed out, then new
-          old_char = show_spaces && change.old_element == ' ' ? show_spaces : change.old_element
-          new_char = show_spaces && change.new_element == ' ' ? show_spaces : change.new_element
-          result << @colorizer.colorize(old_char, old_color, bold: true)
-          result << @colorizer.colorize(new_char, new_color, bold: true)
-        when '-'
-          # Deleted
-          char = show_spaces && change.old_element == ' ' ? show_spaces : change.old_element
-          result << @colorizer.colorize(char, old_color, bold: true)
-        when '+'
-          # Added
-          char = show_spaces && change.new_element == ' ' ? show_spaces : change.new_element
-          result << @colorizer.colorize(char, new_color, bold: true)
-        end
-      end
-
-      result.join
+      callbacks.result.join
     end
   end
 end
