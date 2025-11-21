@@ -5,6 +5,6 @@ source 'https://rubygems.org'
 gemspec
 
 group :development, :test do
-  gem 'ruby-prof'
-  gem 'stackprof'
+  gem 'ruby-prof', require: false
+  gem 'stackprof', require: false
 end

@@ -11,9 +11,11 @@ require_relative 'rubocop_interactive/session'
 require_relative 'rubocop_interactive/actions'
 require_relative 'rubocop_interactive/ui'
 require_relative 'rubocop_interactive/patch_generator'
+require_relative 'rubocop_interactive/patch_renderer'
 require_relative 'rubocop_interactive/template_context'
 require_relative 'rubocop_interactive/template_renderer'
 require_relative 'rubocop_interactive/temp_file'
+require_relative 'rubocop_interactive/editor_launcher'
 
 module RubocopInteractive
   class Error < StandardError; end

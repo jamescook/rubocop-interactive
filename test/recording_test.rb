@@ -44,6 +44,42 @@ class RecordingTest < Minitest::Test
     end
   end
 
+  def test_start_with_record_keypresses_writes_log_file
+    with_temp_fixture do |dir|
+      file_path = File.join(dir, 'test.rb')
+      File.write(file_path, <<~RUBY)
+        def foo
+          return 42
+        end
+      RUBY
+
+      json_data = run_rubocop_on_file(file_path)
+
+      # Use simple keypresses: skip then quit
+      input = StringIO.new("sq")
+      output = StringIO.new
+
+      ui = RubocopInteractive::UI.new(
+        input: input,
+        output: output,
+        record_keypresses: true,
+        colorizer: RubocopInteractive::NoopColorizer
+      )
+
+      # Change to temp dir so log file is created there
+      Dir.chdir(dir) do
+        RubocopInteractive.start!(json_data.to_json, ui: ui, record_keypresses: true)
+
+        # Find the log file
+        log_files = Dir.glob('keystroke_record_*.log')
+        assert_equal 1, log_files.size, "Should have created one log file"
+
+        log_content = File.read(log_files.first)
+        assert_equal 'sq', log_content, "Log should contain the keypresses"
+      end
+    end
+  end
+
   private
 
   def run_rubocop_on_file(file_path)

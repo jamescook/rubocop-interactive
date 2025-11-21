@@ -31,6 +31,7 @@ module RubocopInteractive
       'd' => :disable_line,
       'D' => :disable_file,
       'p' => :show_patch,
+      'e' => :open_editor,
       'q' => :quit,
       '?' => :help,
       "\u0003" => :interrupt # Ctrl+C
@@ -154,6 +155,12 @@ module RubocopInteractive
       beep
     end
 
+    def show_no_editor_error
+      puts
+      puts @colorizer.red("No $EDITOR environment variable defined")
+      beep
+    end
+
     def confirm_correct_all(offense)
       puts "Correct ALL remaining instances of #{@colorizer.yellow(offense.cop_name)}?"
       print "Are you sure? [[y]es / [n]o]: "
@@ -244,6 +251,7 @@ module RubocopInteractive
       options << '[s]kip'
       options << '[d]isable line' if state == :pending
       options << '[D]isable file' if state == :pending
+      options << '[e]dit'
       options << '[q]uit'
       options << '[?]help'
       options << '[</>] nav'
@@ -266,6 +274,7 @@ module RubocopInteractive
       puts '  s - Skip this offense'
       puts '  d - Disable cop for this line'
       puts '  D - Disable cop for entire file'
+      puts '  e - Open in $EDITOR'
       puts '  </> or arrow keys - Navigate between offenses'
       puts '  q - Quit'
       puts '  ? - Show this help'

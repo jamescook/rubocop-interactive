@@ -44,11 +44,13 @@ module RubocopInteractive
       original_content = File.read(offense.file_path)
 
       # Debug: preserve temp file state before correction
+      # :nocov:
       if RubocopInteractive.config.debug_preserve_temp
         debug_file = "#{offense.file_path}.debug-before-#{Time.now.to_i}"
         File.write(debug_file, original_content)
         warn "Debug: saved file state to #{debug_file}"
       end
+      # :nocov:
 
       # Use RuboCop's internal corrector API to fix just this one offense
       corrected_content = apply_single_correction(
@@ -59,11 +61,13 @@ module RubocopInteractive
 
       if corrected_content && corrected_content != original_content
         # Debug: preserve corrected content
+        # :nocov:
         if RubocopInteractive.config.debug_preserve_temp
           debug_file = "#{offense.file_path}.debug-after-#{Time.now.to_i}"
           File.write(debug_file, corrected_content)
           warn "Debug: saved corrected content to #{debug_file}"
         end
+        # :nocov:
 
         File.write(offense.file_path, corrected_content)
         { status: :corrected }

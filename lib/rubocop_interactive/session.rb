@@ -5,8 +5,9 @@ module RubocopInteractive
   class Session
     attr_reader :stats
 
-    def initialize(json, ui: UI.new)
+    def initialize(json, ui: UI.new, editor_launcher: nil)
       @ui = ui
+      @editor_launcher = editor_launcher || EditorLauncher.new
       @all_offenses = parse_all_offenses(json)
       @stats = { corrected: 0, disabled: 0 }
       rebuild_cop_counts
@@ -64,6 +65,13 @@ module RubocopInteractive
           next
         when :show_patch
           @ui.show_patch(offense)
+          needs_redraw = false
+          next
+        when :open_editor
+          result = @editor_launcher.launch(offense.file_path, offense.line)
+          if result == false && @editor_launcher.error == :no_editor
+            @ui.show_no_editor_error
+          end
           needs_redraw = false
           next
         end
