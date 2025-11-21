@@ -54,9 +54,15 @@ class ColorTest < Minitest::Test
   end
 
   def test_colorize_supports_x11_color_names
+    # Set COLORTERM to ensure truecolor support
+    original_colorterm = ENV['COLORTERM']
+    ENV['COLORTERM'] = 'truecolor'
+
     # Test a few X11 colors
     result = RubocopInteractive::Color.colorize('hello', :aqua)
     assert_match(/\e\[38;2;0;255;255m.*\e\[0m/, result)
+  ensure
+    ENV['COLORTERM'] = original_colorterm
   end
 
   def test_colorize_returns_text_unchanged_for_unknown_color
