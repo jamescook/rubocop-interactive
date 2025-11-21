@@ -54,15 +54,11 @@ class ColorTest < Minitest::Test
   end
 
   def test_colorize_supports_x11_color_names
-    # Set COLORTERM to ensure truecolor support
-    original_colorterm = ENV['COLORTERM']
-    ENV['COLORTERM'] = 'truecolor'
-
-    # Test a few X11 colors
-    result = RubocopInteractive::Color.colorize('hello', :aqua)
-    assert_match(/\e\[38;2;0;255;255m.*\e\[0m/, result)
-  ensure
-    ENV['COLORTERM'] = original_colorterm
+    with_colorterm('truecolor') do
+      # Test a few X11 colors
+      result = RubocopInteractive::Color.colorize('hello', :aqua)
+      assert_match(/\e\[38;2;0;255;255m.*\e\[0m/, result)
+    end
   end
 
   def test_colorize_returns_text_unchanged_for_unknown_color
@@ -71,28 +67,20 @@ class ColorTest < Minitest::Test
   end
 
   def test_colorize_uses_ansi256_for_x11_colors_without_truecolor
-    # Save original env
-    original_colorterm = ENV['COLORTERM']
-    ENV.delete('COLORTERM')
-
-    # X11 color should use 256-color fallback
-    result = RubocopInteractive::Color.colorize('hello', :aqua)
-    # Should have 256-color code format: \e[38;5;NNNm
-    assert_match(/\e\[38;5;\d+mhello\e\[0m/, result)
-  ensure
-    ENV['COLORTERM'] = original_colorterm if original_colorterm
+    with_colorterm(nil) do
+      # X11 color should use 256-color fallback
+      result = RubocopInteractive::Color.colorize('hello', :aqua)
+      # Should have 256-color code format: \e[38;5;NNNm
+      assert_match(/\e\[38;5;\d+mhello\e\[0m/, result)
+    end
   end
 
   def test_colorize_uses_truecolor_for_x11_colors_with_truecolor_env
-    # Set truecolor env
-    original_colorterm = ENV['COLORTERM']
-    ENV['COLORTERM'] = 'truecolor'
-
-    # X11 color should use RGB truecolor
-    result = RubocopInteractive::Color.colorize('hello', :aqua)
-    # Should have truecolor format: \e[38;2;R;G;Bm
-    assert_match(/\e\[38;2;\d+;\d+;\d+mhello\e\[0m/, result)
-  ensure
-    ENV['COLORTERM'] = original_colorterm if original_colorterm
+    with_colorterm('truecolor') do
+      # X11 color should use RGB truecolor
+      result = RubocopInteractive::Color.colorize('hello', :aqua)
+      # Should have truecolor format: \e[38;2;R;G;Bm
+      assert_match(/\e\[38;2;\d+;\d+;\d+mhello\e\[0m/, result)
+    end
   end
 end

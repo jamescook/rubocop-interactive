@@ -3,7 +3,6 @@
 require_relative 'test_helper'
 
 class SessionCorrectAllTest < Minitest::Test
-  include TestHelper
 
   def test_correct_all_applies_fix_to_all_instances_of_cop
     with_temp_fixture do |dir|

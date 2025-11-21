@@ -4,7 +4,6 @@ require_relative 'test_helper'
 require 'stringio'
 
 class UITest < Minitest::Test
-  include TestHelper
 
   def setup
     @output = StringIO.new

@@ -3,7 +3,6 @@
 require_relative 'test_helper'
 
 class SessionTest < Minitest::Test
-  include TestHelper
 
   def test_parses_offenses_from_json
     ui = FakeUI.new

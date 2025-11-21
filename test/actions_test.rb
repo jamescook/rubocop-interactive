@@ -3,7 +3,6 @@
 require_relative 'test_helper'
 
 class ActionsTest < Minitest::Test
-  include TestHelper
 
   def setup
     @offense_data = {
