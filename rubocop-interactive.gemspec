@@ -12,7 +12,7 @@ Gem::Specification.new do |spec|
   spec.license       = 'MIT'
   spec.required_ruby_version = '>= 3.1.0'
 
-  spec.files         = Dir['lib/**/*.rb', 'bin/*', 'README.md', 'LICENSE']
+  spec.files         = Dir['lib/**/*.rb', 'lib/**/*.erb', 'bin/*', 'README.md', 'LICENSE']
   spec.bindir        = 'bin'
   spec.executables   = ['rubocop-interactive']
   spec.require_paths = ['lib']

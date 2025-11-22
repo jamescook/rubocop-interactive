@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'json'
+require 'diff/lcs'
 require_relative 'rubocop_interactive/config'
 require_relative 'rubocop_interactive/color'
 require_relative 'rubocop_interactive/noop_colorizer'

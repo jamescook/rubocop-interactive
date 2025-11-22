@@ -1,7 +1,10 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# Use project's bundled gems if available (respects Gemfile.lock versions)
+# Load our gem dependencies BEFORE bundler/setup to avoid Ruby 3.4 bundled_gems issues
+require 'diff/lcs'
+
+# Use project's bundled gems if available (respects Gemfile.lock versions for rubocop)
 begin
   require 'bundler/setup'
 rescue LoadError
@@ -58,6 +61,13 @@ OptionParser.new do |opts|
   # Undocumented option for recording keypresses (test development only)
   opts.on('--record', 'Record keypresses to timestamped log file') do
     options[:record_keypresses] = true
+  end
+
+  opts.on('--print-rubocop-version', 'Show which RuboCop version will be used') do
+    require 'rubocop'
+    puts "RuboCop version: #{RuboCop::Version.version}"
+    puts "RuboCop path: #{Gem.loaded_specs['rubocop']&.full_gem_path || 'unknown'}"
+    exit
   end
 
   opts.on('-h', '--help', 'Show this help') do
