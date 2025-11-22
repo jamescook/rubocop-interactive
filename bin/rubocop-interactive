@@ -77,8 +77,5 @@ OptionParser.new do |opts|
 end.parse!
 
 # Start interactive session - loading screen shown before reading input
-if ARGV.any?
-  RubocopInteractive.start_with_files!(ARGV, **options)
-else
-  RubocopInteractive.start_with_stdin!(**options)
-end
+input = ARGV.any? ? ARGV : $stdin
+RubocopInteractive.start!(input, **options)

@@ -10,6 +10,10 @@ class FakeUI
     @offenses_shown = []
   end
 
+  def show_loading(source:, files: nil)
+    # no-op
+  end
+
   def show_summary(total:)
     # no-op
   end

@@ -20,28 +20,33 @@ require_relative 'rubocop_interactive/editor_launcher'
 module RubocopInteractive
   class Error < StandardError; end
 
-  def self.start_with_stdin!(confirm_patch: false, template: 'default', summary_on_exit: false, record_keypresses: false)
-    ui = UI.new(confirm_patch: confirm_patch, template: template, summary_on_exit: summary_on_exit, record_keypresses: record_keypresses)
-    ui.show_loading(source: :stdin)
-
-    json = $stdin.read
-
-    start!(json, ui: ui, confirm_patch: confirm_patch, template: template, summary_on_exit: summary_on_exit, record_keypresses: record_keypresses)
-  end
-
-  def self.start_with_files!(files, confirm_patch: false, template: 'default', summary_on_exit: false, record_keypresses: false)
-    ui = UI.new(confirm_patch: confirm_patch, template: template, summary_on_exit: summary_on_exit, record_keypresses: record_keypresses)
-    ui.show_loading(source: :files, files: files)
-
-    json = run_rubocop_on_files(files)
-
-    start!(json, ui: ui, confirm_patch: confirm_patch, template: template, summary_on_exit: summary_on_exit, record_keypresses: record_keypresses)
-  end
-
-  def self.start!(json, ui: nil, confirm_patch: false, template: 'default', summary_on_exit: false, record_keypresses: false)
+  def self.start!(input, ui: nil, confirm_patch: false, template: 'default', summary_on_exit: false, record_keypresses: false)
+    # Create UI if not provided
     ui ||= UI.new(confirm_patch: confirm_patch, template: template, summary_on_exit: summary_on_exit, record_keypresses: record_keypresses)
 
-    session = Session.new(json, ui: ui)
+    # Convert input to JSON string based on type
+    json_string = case input
+                  when Array
+                    # Array of file paths
+                    ui.show_loading(source: :files, files: input)
+                    run_rubocop_on_files(input)
+                  when Hash
+                    # Already parsed JSON - convert back to string
+                    JSON.generate(input)
+                  when String
+                    # Raw JSON string
+                    input
+                  else
+                    # IO-like object (IO, StringIO, File, etc) - must have #read method
+                    if input.respond_to?(:read)
+                      ui.show_loading(source: :stdin)
+                      input.read
+                    else
+                      raise ArgumentError, "input must be IO-like (with #read), Array (files), Hash (parsed JSON), or String (JSON)"
+                    end
+                  end
+
+    session = Session.new(json_string, ui: ui)
     stats = session.run
 
     # Write keypress recording if enabled

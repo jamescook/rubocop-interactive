@@ -184,23 +184,7 @@ class CalculatorE2ETest < Minitest::Test
   end
 
   def run_rubocop_json
-    require 'rubocop'
-    require 'stringio'
-
-    output = StringIO.new
-    old_stdout = $stdout
-    old_stderr = $stderr
-    $stdout = output
-    $stderr = StringIO.new
-
-    begin
-      cli = RuboCop::CLI.new
-      cli.run(['--format', 'json', '--cache', 'false', @work_file])
-    ensure
-      $stdout = old_stdout
-      $stderr = old_stderr
-    end
-
-    JSON.parse(output.string)
+    json_string = RubocopInteractive.run_rubocop_on_files([@work_file])
+    JSON.parse(json_string)
   end
 end
