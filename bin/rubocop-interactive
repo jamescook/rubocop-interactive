@@ -66,34 +66,9 @@ OptionParser.new do |opts|
   end
 end.parse!
 
-# Get JSON either from file arguments or stdin
-json = if ARGV.any?
-         # Run rubocop on specified files using in-process API
-         require 'rubocop'
-         require 'stringio'
-
-         output = StringIO.new
-         old_stdout = $stdout
-         old_stderr = $stderr
-         $stdout = output
-         $stderr = StringIO.new
-
-         begin
-           cli = RuboCop::CLI.new
-           cli.run(['--format', 'json', '--cache', 'false'] + ARGV)
-         ensure
-           $stdout = old_stdout
-           $stderr = old_stderr
-         end
-
-         output.string
-       else
-         $stdin.read
-       end
-
-if json.empty?
-  warn 'Usage: rubocop-interactive [file ...] or rubocop --format json | rubocop-interactive'
-  exit 1
+# Start interactive session - loading screen shown before reading input
+if ARGV.any?
+  RubocopInteractive.start_with_files!(ARGV, **options)
+else
+  RubocopInteractive.start_with_stdin!(**options)
 end
-
-RubocopInteractive.start!(json, **options)

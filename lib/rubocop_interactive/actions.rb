@@ -33,7 +33,7 @@ module RubocopInteractive
 
       # Process offenses in reverse order (last line first) to preserve line numbers
       # as we make corrections
-      offenses.sort_by(&:line).reverse.each do |offense|
+      offenses.sort_by(&:line).reverse_each do |offense|
         autocorrect(offense)
       end
 

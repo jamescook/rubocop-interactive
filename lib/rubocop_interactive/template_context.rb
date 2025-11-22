@@ -8,7 +8,7 @@ module RubocopInteractive
     attr_accessor :total_offenses, :offense_number, :cop_name, :cop_count, :message,
                   :file_path, :line, :column, :length, :patch_lines, :patch_start_line,
                   :correctable, :safe_autocorrect, :available_actions, :state, :active,
-                  :colorizer
+                  :colorizer, :source, :files
 
     def initialize(attrs = {})
       attrs.each { |k, v| send("#{k}=", v) }
@@ -107,7 +107,7 @@ module RubocopInteractive
     def italic(text)
       return text unless $stdout.tty?
 
-      "#{ANSI::ITALIC}#{text}#{ANSI::RESET}"
+      "#{Color::ITALIC}#{text}#{Color::RESET}"
     end
 
     # Helper: state indicator for offense

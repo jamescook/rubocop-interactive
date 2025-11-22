@@ -55,6 +55,17 @@ module RubocopInteractive
       @last_interrupt = nil
       @colorizer = colorizer || (ansi ? Color : NoopColorizer)
       @renderer = TemplateRenderer.new(template_name: template)
+      @loading_renderer = TemplateRenderer.new(template_name: 'loading')
+    end
+
+    def show_loading(source: :stdin, files: [])
+      context = TemplateContext.new(
+        colorizer: @colorizer,
+        source: source,
+        files: files
+      )
+      output = @loading_renderer.render(context)
+      print output
     end
 
     def show_summary(total:)
@@ -227,8 +238,8 @@ module RubocopInteractive
         # Read the rest of the escape sequence
         seq = char + @input.getch + @input.getch
         case seq
-        when ANSI::ARROW_LEFT, ANSI::ARROW_UP then return :prev
-        when ANSI::ARROW_RIGHT, ANSI::ARROW_DOWN then return :next
+        when Color::ARROW_LEFT, Color::ARROW_UP then return :prev
+        when Color::ARROW_RIGHT, Color::ARROW_DOWN then return :next
         else return seq
         end
       end

@@ -3,7 +3,21 @@
 module RubocopInteractive
   # Terminal color support with ANSI and X11 color names
   module Color
-    include ANSI
+    # Text formatting
+    RESET = "\e[0m"
+    BOLD = "\e[1m"
+    DIM = "\e[2m"
+    ITALIC = "\e[3m"
+
+    # Cursor and line control
+    CLEAR_LINE = "\r\e[K"
+    BELL = "\a"
+
+    # Arrow key input sequences
+    ARROW_UP = "\e[A"
+    ARROW_DOWN = "\e[B"
+    ARROW_RIGHT = "\e[C"
+    ARROW_LEFT = "\e[D"
 
     # Basic ANSI colors (foreground)
     ANSI_COLORS = {
@@ -160,7 +174,7 @@ module RubocopInteractive
         return text unless code
 
         bold_prefix = bold ? '1;' : ''
-        "\e[#{bold_prefix}#{code}m#{text}#{ANSI::RESET}"
+        "\e[#{bold_prefix}#{code}m#{text}#{RESET}"
       end
 
       # Convenience methods
@@ -189,11 +203,11 @@ module RubocopInteractive
       end
 
       def bold(text)
-        "#{ANSI::BOLD}#{text}#{ANSI::RESET}"
+        "#{BOLD}#{text}#{RESET}"
       end
 
       def dim(text)
-        "#{ANSI::DIM}#{text}#{ANSI::RESET}"
+        "#{DIM}#{text}#{RESET}"
       end
 
       private
