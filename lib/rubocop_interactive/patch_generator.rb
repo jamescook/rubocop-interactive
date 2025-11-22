@@ -8,12 +8,6 @@ module RubocopInteractive
   module PatchGenerator
     CONTEXT_LINES = 2
 
-    # Diff::LCS action types
-    UNCHANGED = '='
-    CHANGED = '!'
-    DELETED = '-'
-    ADDED = '+'
-
     module_function
 
     def generate(offense)
@@ -88,16 +82,16 @@ module RubocopInteractive
 
       diffs.each_with_index do |change, idx|
         # Track line position in original file
-        if [UNCHANGED, CHANGED, DELETED].include?(change.action)
+        if change.unchanged? || change.changed? || change.deleting?
           current_orig_line += 1
         end
 
-        if change.action != UNCHANGED
+        if !change.unchanged?
           if current_orig_line == target_line
             # Change on the target line
             target_diff_idx = idx
             break
-          elsif change.action == ADDED
+          elsif change.adding?
             # ADDED lines insert between current_orig_line and current_orig_line+1
             # If target_line is the line AFTER this insertion, this is our change
             if current_orig_line + 1 == target_line
@@ -122,9 +116,9 @@ module RubocopInteractive
       change_end = target_diff_idx
 
       # If this is a DELETED or CHANGED followed by ADDED line(s), include ALL consecutive ADDED lines
-      if [DELETED, CHANGED].include?(diffs[target_diff_idx].action)
+      if diffs[target_diff_idx].deleting? || diffs[target_diff_idx].changed?
         idx = target_diff_idx + 1
-        while idx < diffs.size && diffs[idx].action == ADDED
+        while idx < diffs.size && diffs[idx].adding?
           change_end = idx
           idx += 1
         end
@@ -137,23 +131,22 @@ module RubocopInteractive
       # Find actual start line number
       start_line = 1
       (0...start_idx).each do |i|
-        action = diffs[i].action
-        start_line += 1 if [UNCHANGED, CHANGED, DELETED].include?(action)
+        change = diffs[i]
+        start_line += 1 if change.unchanged? || change.changed? || change.deleting?
       end
 
       # Generate patch for this window
       result = []
       (start_idx..end_idx).each do |i|
         change = diffs[i]
-        case change.action
-        when UNCHANGED
+        if change.unchanged?
           result << " #{change.old_element}"
-        when CHANGED
+        elsif change.changed?
           result << "-#{change.old_element}"
           result << "+#{change.new_element}"
-        when DELETED
+        elsif change.deleting?
           result << "-#{change.old_element}"
-        when ADDED
+        elsif change.adding?
           result << "+#{change.new_element}"
         end
       end
@@ -170,7 +163,7 @@ module RubocopInteractive
 
       while idx != boundary && context_added < CONTEXT_LINES
         next_idx = idx + step
-        if diffs[next_idx].action == UNCHANGED
+        if diffs[next_idx].unchanged?
           idx = next_idx
           context_added += 1
         else
@@ -202,15 +195,14 @@ module RubocopInteractive
 
       result = []
       diffs.each do |change|
-        case change.action
-        when UNCHANGED
+        if change.unchanged?
           result << " #{change.old_element}"
-        when CHANGED
+        elsif change.changed?
           result << "-#{change.old_element}"
           result << "+#{change.new_element}"
-        when DELETED
+        elsif change.deleting?
           result << "-#{change.old_element}"
-        when ADDED
+        elsif change.adding?
           result << "+#{change.new_element}"
         end
       end
