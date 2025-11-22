@@ -31,6 +31,7 @@ end
 # Load test support files
 require_relative 'support/helpers'
 require_relative 'support/fakes'
+require_relative 'diff_assertion_helper'
 
 if ENV['PROFILE']
   # Sample every 100 microseconds (10,000 Hz) for high resolution

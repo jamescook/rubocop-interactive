@@ -40,7 +40,45 @@ module RubocopInteractive
     # Given a full file diff with multiple changes, this extracts only the
     # change affecting target_line plus surrounding context lines.
     #
-    # Example: File with changes on lines 4, 6, and 8. Target is line 6.
+    # Why not use Diff::LCS::Hunk?
+    #
+    # Diff::LCS::Hunk generates unified diff format, which would be simpler than our manual
+    # windowing logic. Example of what Hunk produces:
+    #
+    #   @@ -10,3 +10,3 @@
+    #    context line
+    #   -puts "line 10"
+    #   -puts "line 11"
+    #   -puts "line 12"
+    #   +puts 'line 10'
+    #   +puts 'line 11'
+    #   +puts 'line 12'
+    #    context line
+    #
+    # However, there's a mismatch between how RuboCop works and what we need:
+    #
+    # - RuboCop's autocorrect runs at the FILE level. When you tell it to fix Style/StringLiterals,
+    #   it fixes ALL instances in the file (lines 10, 11, 12, etc.)
+    # - But our UI shows offenses ONE AT A TIME. When the user presses 'p' to preview a patch for
+    #   line 10, they only want to see the change for line 10, not lines 11 and 12.
+    # - Diff::LCS::Hunk groups consecutive changes together as a single hunk. So if lines 10, 11,
+    #   and 12 all changed, you'd see all three in the preview.
+    #
+    # Our manual windowing lets us isolate just the target line's change by stopping context
+    # expansion when we hit another changed line. This gives users a focused preview of exactly
+    # what will happen when they press 'a' to autocorrect the current offense.
+    #
+    # To accomplish this, we walk through the diff entries while tracking line positions in both
+    # the original and corrected code, which leads to the following state tracking variables:
+    #
+    # State tracking variables:
+    #   current_orig_line - The line number (1-indexed) in the original file as we walk the diff.
+    #                       Increments for unchanged/changed/deleted lines, NOT for added lines.
+    #   target_diff_idx   - The index in the diffs array where the change affecting target_line lives.
+    #   change_start/end  - Indices in the diffs array defining the change region (target + consecutive adds).
+    #   start_idx/end_idx - Indices in the diffs array after expanding context (the window to display).
+    #
+    # Example: File with double-vs-single quote changes on lines 4, 6, and 8. Target is line 6.
     #
     #   Original:                    Corrected:
     #   1: # frozen_string_literal   1: # frozen_string_literal
@@ -48,23 +86,23 @@ module RubocopInteractive
     #   3: def foo                   3: def foo
     #   4:   x = "hello"             4:   x = 'hello'        <- change
     #   5:   y = 1                   5:   y = 1
-    #   6:   z = "world"             6:   z = 'world'        <- TARGET
+    #   6:   z = "world"             6:   z = 'world'        <- TARGET (The current offense user is working on)
     #   7:   w = 2                   7:   w = 2
     #   8:   v = "bye"               8:   v = 'bye'          <- change
     #   9: end                       9: end
     #
     #   Diff::LCS.sdiff produces (simplified):
-    #   [0] UNCHANGED line 1    [4] CHANGED line 4     [8] CHANGED line 8
-    #   [1] UNCHANGED line 2    [5] UNCHANGED line 5   [9] UNCHANGED line 9
-    #   [2] UNCHANGED line 3    [6] CHANGED line 6
+    #   [0] UNCHANGED line 1    [4] *CHANGED* line 4     [8] *CHANGED* line 8
+    #   [1] UNCHANGED line 2    [5] UNCHANGED line 5     [9] UNCHANGED line 9
+    #   [2] UNCHANGED line 3    [6] *CHANGED* line 6
     #   [3] UNCHANGED line 4    [7] UNCHANGED line 7
     #
-    #   For target_line=6, we find diff index 6 (CHANGED).
+    #   For target_line=6, we find diff index 6 (*CHANGED*).
     #   Then expand context, stopping at other changes:
     #     - Before: index 5 (UNCHANGED line 5) - can add
-    #               index 4 (CHANGED line 4) - stop!
+    #               index 4 (*CHANGED* line 4) - stop!
     #     - After:  index 7 (UNCHANGED line 7) - can add
-    #               index 8 (CHANGED line 8) - stop!
+    #               index 8 (*CHANGED* line 8) - stop!
     #
     #   Result (start_line=5):
     #     "   y = 1\n"           <- context
@@ -94,11 +132,10 @@ module RubocopInteractive
           elsif change.adding?
             # ADDED lines insert between current_orig_line and current_orig_line+1
             # If target_line is the line AFTER this insertion, this is our change
-            if current_orig_line + 1 == target_line
-              target_diff_idx = idx
-              break
-            elsif current_orig_line == 0 && target_line == 1
-              # Special case: addition before first line when targeting line 1
+            added_before_target = (current_orig_line + 1 == target_line)
+            added_at_file_start = current_orig_line.zero? && target_line == 1
+
+            if added_before_target || added_at_file_start
               target_diff_idx = idx
               break
             end
