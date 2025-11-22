@@ -8,6 +8,7 @@ AllCops:
     - 'tmp/**/*'
     - 'coverage/**/*'
     - 'test/fixtures/**/*'
+    - 'test/e2e/fixtures/**/*'
     - 'stress_test.rb'
 
 # We're building a CLI tool, so some metrics are expected to be higher

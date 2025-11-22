@@ -1,0 +1,12 @@
+# Config for tests - inherits all rules from main config but removes fixture exclusions
+# This allows tests to lint fixture files that are excluded in main .rubocop.yml
+
+inherit_from: .rubocop.yml
+
+AllCops:
+  # Override exclusions - only exclude non-fixture directories
+  Exclude:
+    - 'vendor/**/*'
+    - 'tmp/**/*'
+    - 'coverage/**/*'
+    - 'stress_test.rb'
