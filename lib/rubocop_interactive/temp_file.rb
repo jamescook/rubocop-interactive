@@ -4,7 +4,14 @@ require 'fileutils'
 require 'securerandom'
 
 module RubocopInteractive
-  # Manages temp files in project directory for rubocop server compatibility
+  # Manages temp files in project directory
+  #
+  # We create temp files in the project directory (not system /tmp) because:
+  # 1. RuboCop's config lookup walks up from the file's directory. If we used /tmp,
+  #    RuboCop wouldn't find the project's .rubocop.yml and would use defaults instead.
+  # 2. Supports --debug-preserve-temp flag to keep files for debugging
+  #
+  # Ruby's built-in Tempfile would auto-delete and use system temp dir, which doesn't work for our needs.
   module TempFile
     TEMP_DIR = '.rubocop-interactive-tmp'
 
