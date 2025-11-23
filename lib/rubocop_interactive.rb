@@ -64,20 +64,29 @@ module RubocopInteractive
     require 'stringio'
 
     output = StringIO.new
+    stderr_output = StringIO.new
     old_stdout = $stdout
     old_stderr = $stderr
     $stdout = output
-    $stderr = StringIO.new
+    $stderr = stderr_output
 
     begin
       cli = RuboCop::CLI.new
-      cli.run(['--format', 'json', '--cache', 'false'] + files)
+      exit_code = cli.run(['--format', 'json', '--cache', 'false'] + files)
     ensure
       $stdout = old_stdout
       $stderr = old_stderr
     end
 
-    output.string
+    result = output.string
+
+    # If RuboCop failed and returned no output, surface the stderr
+    if result.empty? && exit_code != 0
+      error_output = stderr_output.string
+      raise Error, "RuboCop failed (exit code #{exit_code}):\n#{error_output}"
+    end
+
+    result
   end
 
   def self.write_keypress_log(keypresses)

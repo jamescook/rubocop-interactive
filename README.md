@@ -18,10 +18,17 @@ Interactive RuboCop offense resolution in your terminal. Fix violations one at a
 
 ## Installation
 
-Add to your Gemfile:
+Add to your project's Gemfile (recommended):
 
 ```ruby
 gem 'rubocop-interactive'
+```
+
+Then run:
+
+```bash
+bundle install
+bundle exec rubocop-interactive lib/
 ```
 
 Or install globally:
@@ -30,13 +37,15 @@ Or install globally:
 gem install rubocop-interactive
 ```
 
+**Important**: When running on a project that uses RuboCop plugins (like `rubocop-performance` or `rubocop-rails`), you should install `rubocop-interactive` in that project's Gemfile. This ensures all required plugins are available. Running as a global gem on projects with plugins will fail with "cannot load such file" errors.
+
 ## Usage
 
-Run on specific files:
+Run on files in your current project:
 
 ```bash
-rubocop-interactive file.rb
-rubocop-interactive lib/
+bundle exec rubocop-interactive file.rb
+bundle exec rubocop-interactive lib/
 ```
 
 Or pipe from RuboCop:
@@ -44,6 +53,8 @@ Or pipe from RuboCop:
 ```bash
 rubocop --format json | rubocop-interactive
 ```
+
+**Note**: When running on files outside your current project (e.g., `../other-project/lib`), the tool may fail if the target project requires RuboCop plugins that aren't in your current Gemfile. In this case, cd into the target project and run the tool from there.
 
 ### Commands
 
