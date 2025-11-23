@@ -205,7 +205,7 @@ class PatchGeneratorCopsTest < Minitest::Test
       result = RubocopInteractive::PatchGenerator.generate(offense)
 
       assert result, "Should generate patch for Layout/TrailingWhitespace"
-      assert_match(/-def example\s+\n/, result[:lines], "Should show line with trailing spaces")
+      assert_match(/-def example···\n/, result[:lines], "Should show line with trailing space markers")
       assert_match(/\+def example\n/, result[:lines], "Should show line without trailing spaces")
     end
   end

@@ -129,8 +129,10 @@ module RubocopInteractive
         { status: :disabled }
       elsif current_line.include?('rubocop:disable')
         # Already has a disable directive - append this cop to it
+        # Match existing "# rubocop:disable ..." comment and append cop name
+        disable_pattern = /(# rubocop:disable [^\n]+)/
         lines[line_index] = current_line.sub(
-          /(# rubocop:disable [^\n]+)/,
+          disable_pattern,
           "\\1, #{offense.cop_name}"
         )
         File.write(offense.file_path, lines.join)

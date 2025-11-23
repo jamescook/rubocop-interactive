@@ -177,14 +177,14 @@ module RubocopInteractive
       (start_idx..end_idx).each do |i|
         change = diffs[i]
         if change.unchanged?
-          result << " #{change.old_element}"
+          result << visualize_trailing_whitespace(" #{change.old_element}")
         elsif change.changed?
-          result << "-#{change.old_element}"
-          result << "+#{change.new_element}"
+          result << visualize_trailing_whitespace("-#{change.old_element}")
+          result << visualize_trailing_whitespace("+#{change.new_element}")
         elsif change.deleting?
-          result << "-#{change.old_element}"
+          result << visualize_trailing_whitespace("-#{change.old_element}")
         elsif change.adding?
-          result << "+#{change.new_element}"
+          result << visualize_trailing_whitespace("+#{change.new_element}")
         end
       end
 
@@ -233,18 +233,39 @@ module RubocopInteractive
       result = []
       diffs.each do |change|
         if change.unchanged?
-          result << " #{change.old_element}"
+          result << visualize_trailing_whitespace(" #{change.old_element}")
         elsif change.changed?
-          result << "-#{change.old_element}"
-          result << "+#{change.new_element}"
+          result << visualize_trailing_whitespace("-#{change.old_element}")
+          result << visualize_trailing_whitespace("+#{change.new_element}")
         elsif change.deleting?
-          result << "-#{change.old_element}"
+          result << visualize_trailing_whitespace("-#{change.old_element}")
         elsif change.adding?
-          result << "+#{change.new_element}"
+          result << visualize_trailing_whitespace("+#{change.new_element}")
         end
       end
 
       result
+    end
+
+    def visualize_trailing_whitespace(line)
+      # Check if line (without newline) has trailing whitespace
+      # Match: <diff prefix><content><trailing whitespace>
+      pattern = /
+        ^([-+\ ])      # Diff prefix: -, +, or space
+        (.*?)          # Content (non-greedy)
+        ([ \t]+)       # Trailing whitespace (spaces or tabs)
+        $              # End of line
+      /x
+
+      if line.chomp =~ pattern
+        prefix = $1
+        content = $2
+        trailing = $3
+        markers = trailing.gsub(' ', '·').gsub("\t", '→')
+        "#{prefix}#{content}#{markers}\n"
+      else
+        line
+      end
     end
   end
 end
