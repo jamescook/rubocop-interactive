@@ -233,19 +233,19 @@ module RubocopInteractive
         ['truecolor', '24bit'].include?(ENV.fetch('COLORTERM', nil))
       end
 
-      def ansi256(r, g, b)
+      def ansi256(red, green, blue)
         # Convert RGB to 256-color palette
         # 216 color cube: 6x6x6
-        if r == g && g == b
+        if red == green && green == blue
           # Grayscale
-          gray = ((r - 8) / 247.0 * 24).round
+          gray = ((red - 8) / 247.0 * 24).round
           gray = [[gray, 0].max, 23].min
           "38;5;#{232 + gray}"
         else
           # Color cube
-          ri = (r / 255.0 * 5).round
-          gi = (g / 255.0 * 5).round
-          bi = (b / 255.0 * 5).round
+          ri = (red / 255.0 * 5).round
+          gi = (green / 255.0 * 5).round
+          bi = (blue / 255.0 * 5).round
           "38;5;#{16 + (36 * ri) + (6 * gi) + bi}"
         end
       end
