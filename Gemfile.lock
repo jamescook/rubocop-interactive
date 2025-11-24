@@ -37,6 +37,10 @@ GEM
       unicode-display_width (>= 2.4.0, < 4.0)
     rubocop-ast (1.42.0)
       parser (>= 3.3.7.2)
+    rubocop-minitest (0.37.1)
+      lint_roller (~> 1.1)
+      rubocop (>= 1.72.1, < 2.0)
+      rubocop-ast (>= 1.38.0, < 2.0)
     ruby-prof (1.7.2)
       base64
     ruby-progressbar (1.13.0)
@@ -59,6 +63,7 @@ DEPENDENCIES
   minitest (~> 5.0)
   rake (>= 13.0)
   rubocop-interactive!
+  rubocop-minitest (~> 0.36)
   ruby-prof
   simplecov (~> 0.22)
   stackprof

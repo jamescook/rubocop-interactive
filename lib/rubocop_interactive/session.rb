@@ -10,6 +10,7 @@ module RubocopInteractive
       @editor_launcher = editor_launcher || EditorLauncher.new
       @all_offenses = parse_all_offenses(json)
       @stats = { corrected: 0, disabled: 0 }
+      @offense_states = {} # Track state for each offense by location key
       rebuild_cop_counts
     end
 
@@ -25,14 +26,15 @@ module RubocopInteractive
       needs_redraw = true
       while index >= 0 && index < @all_offenses.size
         offense = @all_offenses[index]
+        state = @offense_states[offense_key(offense)] || :pending
 
         if needs_redraw
           cop_count = @cop_counts[offense.cop_name] || 0
-          @ui.show_offense(offense, index: index, total: @all_offenses.size, state: :pending, cop_count: cop_count)
+          @ui.show_offense(offense, index: index, total: @all_offenses.size, state: state, cop_count: cop_count)
         end
         needs_redraw = true
 
-        action = @ui.prompt_for_action(offense, state: :pending)
+        action = @ui.prompt_for_action(offense, state: state)
 
         # Navigation (arrow keys) - stop at boundaries, don't exit
         case action
@@ -57,6 +59,12 @@ module RubocopInteractive
           return @stats
         when :skip
           # Skip is an action - exits on last offense
+          @offense_states[offense_key(offense)] = :skipped
+
+          # Update the display to show [SKIPPED]
+          cop_count = @cop_counts[offense.cop_name] || 0
+          @ui.update_offense_state(offense, index: index, total: @all_offenses.size, state: :skipped, cop_count: cop_count)
+
           if index >= @all_offenses.size - 1
             @ui.show_stats(@stats)
             return @stats
@@ -107,7 +115,14 @@ module RubocopInteractive
           result = Actions.perform(action, remaining_of_cop)
           if result
             # Track each corrected offense
-            remaining_of_cop.each { track_result(:corrected) }
+            remaining_of_cop.each do |o|
+              @offense_states[offense_key(o)] = :corrected
+              track_result(:corrected)
+            end
+
+            # Update current offense display to show [CORRECTED]
+            cop_count = @cop_counts[offense.cop_name] || 0
+            @ui.update_offense_state(offense, index: index, total: @all_offenses.size, state: :corrected, cop_count: cop_count)
 
             # Rescan all affected files
             affected_files = remaining_of_cop.map(&:file_path).uniq
@@ -131,7 +146,12 @@ module RubocopInteractive
         # Other actions (autocorrect, disable)
         result = Actions.perform(action, offense)
         if result
+          @offense_states[offense_key(offense)] = result[:status]
           track_result(result[:status])
+
+          # Update the display to show the action taken
+          cop_count = @cop_counts[offense.cop_name] || 0
+          @ui.update_offense_state(offense, index: index, total: @all_offenses.size, state: result[:status], cop_count: cop_count)
 
           # Re-scan file to get fresh offense list
           # This handles: fixes that resolve multiple offenses, or introduce new ones
@@ -185,6 +205,11 @@ module RubocopInteractive
         end
       end
       offenses
+    end
+
+    def offense_key(offense)
+      # Create a unique key for this offense based on location and cop
+      "#{offense.file_path}:#{offense.line}:#{offense.column}:#{offense.cop_name}"
     end
 
     def track_result(result)

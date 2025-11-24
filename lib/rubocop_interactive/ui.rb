@@ -80,11 +80,33 @@ module RubocopInteractive
       # Print everything except the prompt (last line)
       lines = output.lines
       prompt_line = lines.pop
-      puts
+      puts # This adds a blank line
       lines.each { |line| print line }
 
       # Store prompt for later use
       @current_prompt = prompt_line
+      # Track lines: +1 for the blank line from puts
+      @last_offense_lines = lines.size + 1
+    end
+
+    def update_offense_state(offense, index:, total:, state:, cop_count:)
+      # Move cursor up to overwrite the previous offense display
+      return unless @last_offense_lines
+
+      # Need to move up past:
+      # - The prompt line (1)
+      # - The offense content including initial blank line (@last_offense_lines)
+      total_lines = @last_offense_lines + 1
+
+      # Move up and clear each line
+      total_lines.times do
+        print "\e[A"      # Move up one line
+        print "\e[2K"     # Clear entire line
+      end
+      print "\r"          # Move to start of line
+
+      # Redraw with new state
+      show_offense(offense, index: index, total: total, state: state, cop_count: cop_count)
     end
 
     def prompt_for_action(offense, state: :pending)
@@ -196,7 +218,10 @@ module RubocopInteractive
       return unless offense.correctable?
 
       patch_data = PatchGenerator.generate(offense)
-      return unless patch_data
+      unless patch_data
+        puts @colorizer.yellow("Unable to generate patch preview (autocorrect may not produce changes)")
+        return
+      end
 
       # Build a context just for rendering the patch
       context = TemplateContext.new(

@@ -4,6 +4,50 @@ require_relative 'test_helper'
 
 class PatchGeneratorTest < Minitest::Test
   include DiffAssertionHelper
+  def test_generate_with_empty_line_insertion
+    # Test inserting a blank line (like Minitest/EmptyLineBeforeAssertionMethods does)
+    # Since we can't easily trigger the actual Minitest cop in tests, we test the underlying
+    # mechanism by directly calling extract_window with manually crafted before/after strings
+    original = <<~RUBY
+      def test_something
+        output_text = 'hello'
+        assert_includes output_text, 'hello'
+      end
+    RUBY
+
+    # Manually create corrected version with blank line inserted
+    corrected = <<~RUBY
+      def test_something
+        output_text = 'hello'
+
+        assert_includes output_text, 'hello'
+      end
+    RUBY
+
+    # The offense is reported on line 3 (the assertion line)
+    # But the fix is to insert a blank line BEFORE it
+    target_line = 3
+
+    result = RubocopInteractive::PatchGenerator.extract_window(
+      original.lines,
+      corrected.lines,
+      target_line
+    )
+
+    assert result, "Should generate a patch for empty line insertion"
+    assert result[:lines].include?("+\n"), "Should show an added blank line"
+
+    expected_diff = <<~DIFF
+       def test_something
+         output_text = 'hello'
+      +
+         assert_includes output_text, 'hello'
+       end
+    DIFF
+
+    assert_diff_equal expected_diff, result[:lines]
+  end
+
   def test_generate_with_string_literals_offense
     # Create a temp file with double-quoted string that should be single-quoted
     Dir.mktmpdir do |dir|

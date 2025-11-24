@@ -17,11 +17,29 @@ module RubocopInteractive
 
     module_function
 
-    def create(content, extension: '.rb')
-      ensure_temp_dir!
+    def create(content, extension: '.rb', basename: nil)
+      if basename
+        # Create isolated directory to preserve original filename (for cops checking patterns)
+        # e.g., "actions_test.rb" stays as "actions_test.rb" in its own temp dir
+        subdir = File.join(TEMP_DIR, SecureRandom.hex(8))
+        FileUtils.mkdir_p(subdir)
 
-      filename = "#{SecureRandom.hex(8)}#{extension}"
-      path = File.join(TEMP_DIR, filename)
+        # Copy .rubocop.yml to temp dir so RuboCop uses project config
+        # RuboCop walks up from the file's directory to find config.
+        # Without this, it won't load plugins (like rubocop-minitest) or project settings,
+        # causing cops to either not run (e.g., Minitest/EmptyLineBeforeAssertionMethods)
+        # or use incorrect defaults.
+        if File.exist?('.rubocop.yml')
+          FileUtils.cp('.rubocop.yml', subdir)
+        end
+
+        filename = "#{basename}#{extension}"
+        path = File.join(subdir, filename)
+      else
+        ensure_temp_dir!
+        filename = "#{SecureRandom.hex(8)}#{extension}"
+        path = File.join(TEMP_DIR, filename)
+      end
 
       File.write(path, content)
       path

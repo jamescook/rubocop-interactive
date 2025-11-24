@@ -103,6 +103,28 @@ module RubocopInteractive
       colorizer.yellow(text)
     end
 
+    # Helper: deterministic color for cop name
+    # Maps cop names to one of 10 distinct X11 colors
+    def cop_color(name)
+      # Pick 10 visually distinct X11 colors
+      palette = %i[
+        coral
+        dodgerblue
+        mediumseagreen
+        orange
+        orchid
+        royalblue
+        salmon
+        turquoise
+        violet
+        yellowgreen
+      ]
+
+      # Hash the cop name and map to palette index
+      hash = name.each_char.sum(&:ord)
+      palette[hash % palette.size]
+    end
+
     # Helper: italic text
     def italic(text)
       return text unless $stdout.tty?
@@ -114,9 +136,27 @@ module RubocopInteractive
     def state_indicator
       case state
       when :corrected then colorizer.green('[CORRECTED]')
-      when :disabled then colorizer.yellow('[DISABLED]')
+      when :disabled then colorizer.red('[DISABLED]')
+      when :skipped then colorizer.cyan('[SKIPPED]')
       else ''
       end
+    end
+
+    # Helper: right-aligned state indicator with padding
+    # Takes the content before the indicator and pads to align the indicator on the right
+    def state_indicator_aligned(content_before, terminal_width: 100)
+      indicator = state_indicator
+      return '' if indicator.empty?
+
+      # Remove ANSI codes to calculate visible length
+      visible_content = content_before.gsub(/\e\[[0-9;]*m/, '')
+      visible_indicator = indicator.gsub(/\e\[[0-9;]*m/, '')
+
+      # Calculate padding needed
+      padding_needed = terminal_width - visible_content.length - visible_indicator.length - 1
+      padding_needed = [padding_needed, 1].max # At least 1 space
+
+      ' ' * padding_needed + indicator
     end
 
     # Helper: show the offense line with caret indicator below
@@ -127,6 +167,20 @@ module RubocopInteractive
       return '' if line > lines.size
 
       source_line = lines[line - 1].chomp
+
+      # If the offense line is blank or very short, show context
+      if source_line.strip.empty?
+        # Show line before and after for context
+        result = []
+        if line > 1
+          result << dim("#{line - 1}: #{lines[line - 2].chomp}")
+        end
+        result << colorizer.yellow("#{line}: (blank line) ← offense here")
+        if line < lines.size
+          result << dim("#{line + 1}: #{lines[line].chomp}")
+        end
+        return result.join("\n")
+      end
 
       # Build caret indicator
       # Cap caret length at 80 to avoid printing hundreds of carets for multi-line offenses

@@ -47,6 +47,7 @@ class ActionsTest < Minitest::Test
       assert_equal :disabled, result[:status]
 
       content = File.read(file_path)
+
       assert_match(/rubocop:disable Style\/StringLiterals/, content)
     end
   end
@@ -62,7 +63,7 @@ class ActionsTest < Minitest::Test
 
       lines = File.readlines(file_path)
       assert_match(/rubocop:disable Style\/StringLiterals/, lines.first)
-      assert_match(/rubocop:enable Style\/StringLiterals/, lines.last)
+      assert_match(%r{rubocop:enable Style/StringLiterals}, lines.last)
     end
   end
 

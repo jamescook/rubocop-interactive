@@ -22,6 +22,11 @@ class FakeUI
     @offenses_shown << offense
   end
 
+  def update_offense_state(offense, **_)
+    # Track that we updated the state (for testing purposes, just track like show_offense)
+    @offenses_shown << offense
+  end
+
   def prompt_for_action(_offense, **_)
     @prompts_shown += 1
     action = @responses.shift || :skip

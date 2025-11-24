@@ -17,7 +17,11 @@ module RubocopInteractive
       original_lines = original_content.lines
 
       # Create temp file with full content for valid Ruby syntax
-      temp_path = TempFile.create(original_content)
+      # Preserve basename suffix for cops that check filename patterns (e.g., *_test.rb)
+      # e.g., "foo_test.rb" -> basename "foo_test", keep the "_test" suffix
+      original_basename = File.basename(offense.file_path, '.*')
+      extension = File.extname(offense.file_path)
+      temp_path = TempFile.create(original_content, extension: extension, basename: original_basename)
       begin
         # Run rubocop on the full file
         run_rubocop_autocorrect(offense.cop_name, temp_path)
