@@ -1,8 +1,10 @@
 # frozen_string_literal: true
 
+require_relative 'lib/rubocop_interactive/version'
+
 Gem::Specification.new do |spec|
   spec.name          = 'rubocop-interactive'
-  spec.version       = '0.1.0'
+  spec.version       = RubocopInteractive::VERSION
   spec.authors       = ['James Cook']
   spec.email         = ['jcook.rubyist@gmail.com']
 

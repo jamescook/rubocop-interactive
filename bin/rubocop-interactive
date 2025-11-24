@@ -63,6 +63,11 @@ OptionParser.new do |opts|
     options[:record_keypresses] = true
   end
 
+  opts.on('--version', 'Show version') do
+    puts "rubocop-interactive version #{RubocopInteractive::VERSION}"
+    exit
+  end
+
   opts.on('--print-rubocop-version', 'Show which RuboCop version will be used') do
     require 'rubocop'
     puts "RuboCop version: #{RuboCop::Version.version}"

@@ -2,6 +2,7 @@
 
 require 'json'
 require 'diff/lcs'
+require_relative 'rubocop_interactive/version'
 require_relative 'rubocop_interactive/config'
 require_relative 'rubocop_interactive/color'
 require_relative 'rubocop_interactive/noop_colorizer'
