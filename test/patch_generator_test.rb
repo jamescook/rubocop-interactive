@@ -419,4 +419,51 @@ class PatchGeneratorTest < Minitest::Test
       refute_diff_contains result[:lines], /line 6/, "Should not include line 6 as a change"
     end
   end
+
+  def test_generate_works_for_path_dependent_cops
+    # Tests that patch preview works for cops that only run on files in specific paths
+    # e.g., Minitest cops only run on test files in test/ directory
+    # This requires the temp file to be created in the same directory as the original
+    Dir.mktmpdir do |dir|
+      # Create a test/ subdirectory to match Minitest cop requirements
+      test_dir = File.join(dir, 'test')
+      FileUtils.mkdir_p(test_dir)
+
+      file_path = File.join(test_dir, 'sample_test.rb')
+      File.write(file_path, <<~RUBY)
+        # frozen_string_literal: true
+
+        require_relative 'test_helper'
+
+        class SampleTest < Minitest::Test
+          def test_something
+            result = calculate_something
+            assert_equal 42, result
+          end
+        end
+      RUBY
+
+      offense = RubocopInteractive::Offense.new(
+        file_path: file_path,
+        data: {
+          'cop_name' => 'Minitest/EmptyLineBeforeAssertionMethods',
+          'message' => 'Add empty line before assertion',
+          'severity' => 'convention',
+          'correctable' => true,
+          'location' => {
+            'start_line' => 8,
+            'start_column' => 5,
+            'length' => 24
+          }
+        }
+      )
+
+      result = RubocopInteractive::PatchGenerator.generate(offense)
+
+      # If temp file isn't created in the right directory, the Minitest cop won't run
+      # and we'll get nil instead of a patch
+      assert result, "Should generate a patch for Minitest cop (requires temp file in test/ directory)"
+      assert result[:lines].include?("+\n"), "Should show an added blank line"
+    end
+  end
 end
