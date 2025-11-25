@@ -230,7 +230,7 @@ module RubocopInteractive
       end
 
       def truecolor?
-        ['truecolor', '24bit'].include?(ENV.fetch('COLORTERM', nil))
+        %w[truecolor 24bit].include?(ENV.fetch('COLORTERM', nil))
       end
 
       def ansi256(red, green, blue)

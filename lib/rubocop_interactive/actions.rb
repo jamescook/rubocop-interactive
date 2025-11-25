@@ -97,7 +97,7 @@ module RubocopInteractive
       # Capture errors during investigation
       result = begin
         team.investigate(source)
-      rescue => e
+      rescue StandardError => e
         warn "Error during investigation: #{e.class}: #{e.message}" if RubocopInteractive.config.debug_preserve_temp
         warn e.backtrace.first(5).join("\n") if RubocopInteractive.config.debug_preserve_temp
         return nil

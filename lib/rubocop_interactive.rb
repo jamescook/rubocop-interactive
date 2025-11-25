@@ -39,21 +39,21 @@ module RubocopInteractive
                     input
                   else
                     # IO-like object (IO, StringIO, File, etc) - must have #read method
-                    if input.respond_to?(:read)
-                      ui.show_loading(source: :stdin)
-                      input.read
-                    else
-                      raise ArgumentError, "input must be IO-like (with #read), Array (files), Hash (parsed JSON), or String (JSON)"
+                    unless input.respond_to?(:read)
+  raise ArgumentError, 'input must be IO-like (with #read), Array (files), Hash (parsed JSON), or String (JSON)'
                     end
+
+                    ui.show_loading(source: :stdin)
+                    input.read
+
+                    
                   end
 
     session = Session.new(json_string, ui: ui)
     stats = session.run
 
     # Write keypress recording if enabled
-    if record_keypresses && ui.recording_input
-      write_keypress_log(ui.recording_input.keypresses)
-    end
+    write_keypress_log(ui.recording_input.keypresses) if record_keypresses && ui.recording_input
 
     stats
   ensure

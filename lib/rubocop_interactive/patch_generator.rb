@@ -231,7 +231,7 @@ module RubocopInteractive
 
         # Read the corrected content
         File.read(temp_path)
-      rescue => e
+      rescue StandardError => e
         warn "Error during autocorrect: #{e.class}: #{e.message}" if RubocopInteractive.config.debug_preserve_temp
         nil
       ensure
@@ -265,18 +265,16 @@ module RubocopInteractive
       # Check if line (without newline) has trailing whitespace
       # Match: <diff prefix><content><trailing whitespace>
       pattern = /
-        ^([-+\ ])      # Diff prefix: -, +, or space
-        (.*?)          # Content (non-greedy)
-        ([ \t]+)       # Trailing whitespace (spaces or tabs)
-        $              # End of line
+        ^(?<prefix>[-+\ ])      # Diff prefix: -, +, or space
+        (?<content>.*?)         # Content (non-greedy)
+        (?<trailing>[ \t]+)     # Trailing whitespace (spaces or tabs)
+        $                       # End of line
       /x
 
-      if line.chomp =~ pattern
-        prefix = $1
-        content = $2
-        trailing = $3
-        markers = trailing.gsub(' ', '·').gsub("\t", '→')
-        "#{prefix}#{content}#{markers}\n"
+      match = line.chomp.match(pattern)
+      if match
+        markers = match[:trailing].gsub(' ', '·').gsub("\t", '→')
+        "#{match[:prefix]}#{match[:content]}#{markers}\n"
       else
         line
       end
