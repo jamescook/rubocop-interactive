@@ -16,27 +16,16 @@ module RubocopInteractive
       original_content = File.read(offense.file_path)
       original_lines = original_content.lines
 
-      # Create temp file with full content for valid Ruby syntax
-      # Preserve basename suffix for cops that check filename patterns (e.g., *_test.rb)
-      # e.g., "foo_test.rb" -> basename "foo_test", keep the "_test" suffix
-      original_basename = File.basename(offense.file_path, '.*')
-      extension = File.extname(offense.file_path)
-      temp_path = TempFile.create(original_content, extension: extension, basename: original_basename)
-      begin
-        # Run rubocop on the full file
-        run_rubocop_autocorrect(offense.cop_name, temp_path)
+      # Use RuboCop's internal API to generate corrected content (same as autocorrect)
+      # This ensures cops run consistently regardless of file path
+      corrected_content = generate_corrected_content(offense.file_path, offense.cop_name)
+      return nil unless corrected_content
+      return nil if original_content == corrected_content
 
-        corrected_content = File.read(temp_path)
+      corrected_lines = corrected_content.lines
 
-        return nil if original_content == corrected_content
-
-        corrected_lines = corrected_content.lines
-
-        # Extract only the window around the target offense line
-        extract_window(original_lines, corrected_lines, offense.line)
-      ensure
-        TempFile.delete(temp_path)
-      end
+      # Extract only the window around the target offense line
+      extract_window(original_lines, corrected_lines, offense.line)
     end
 
     # Extract a small window of diff output around a specific target line.
@@ -215,20 +204,41 @@ module RubocopInteractive
       idx
     end
 
-    def run_rubocop_autocorrect(cop_name, file_path)
+    def generate_corrected_content(file_path, cop_name)
       require 'rubocop'
+      require 'securerandom'
       require 'stringio'
 
-      old_stdout = $stdout
-      old_stderr = $stderr
-      $stdout = StringIO.new
-      $stderr = StringIO.new
+      # Create temp file in same directory as original to preserve path-based cop behavior
+      # (e.g., Minitest cops that only run on files in test/ directory)
+      dir = File.dirname(file_path)
+      basename = File.basename(file_path, '.*')
+      extension = File.extname(file_path)
+      temp_path = File.join(dir, ".rubocop-patch-#{basename}-#{SecureRandom.hex(4)}#{extension}")
 
-      cli = RuboCop::CLI.new
-      cli.run(['--autocorrect-all', '--only', cop_name, file_path])
-    ensure
-      $stdout = old_stdout
-      $stderr = old_stderr
+      # Copy original content to temp file
+      File.write(temp_path, File.read(file_path))
+
+      begin
+        # Run rubocop autocorrect on the temp file
+        cli = RuboCop::CLI.new
+        old_stdout = $stdout
+        old_stderr = $stderr
+        $stdout = StringIO.new
+        $stderr = StringIO.new
+
+        cli.run(['--autocorrect-all', '--only', cop_name, temp_path])
+
+        # Read the corrected content
+        File.read(temp_path)
+      rescue => e
+        warn "Error during autocorrect: #{e.class}: #{e.message}" if RubocopInteractive.config.debug_preserve_temp
+        nil
+      ensure
+        $stdout = old_stdout if old_stdout
+        $stderr = old_stderr if old_stderr
+        File.unlink(temp_path) if File.exist?(temp_path)
+      end
     end
 
     def generate_diff(original_lines, corrected_lines)
