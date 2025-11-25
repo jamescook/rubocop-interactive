@@ -124,13 +124,15 @@ module RubocopInteractive
       line_index = offense.line - 1
       current_line = lines[line_index]
 
-      if current_line.include?('rubocop:disable') && current_line.include?(offense.cop_name)
-        # Already disabled - don't add duplicate
+      # Check if line has an actual rubocop:disable comment (not just the text in a string/regex)
+      disable_pattern = /(# rubocop:disable [^\n]+)/
+      existing_disable = current_line.match(disable_pattern)
+
+      if existing_disable && current_line.include?(offense.cop_name)
+        # Already disabled for this cop - don't add duplicate
         { status: :disabled }
-      elsif current_line.include?('rubocop:disable')
+      elsif existing_disable
         # Already has a disable directive - append this cop to it
-        # Match existing "# rubocop:disable ..." comment and append cop name
-        disable_pattern = /(# rubocop:disable [^\n]+)/
         lines[line_index] = current_line.sub(
           disable_pattern,
           "\\1, #{offense.cop_name}"
@@ -144,6 +146,7 @@ module RubocopInteractive
         File.write(offense.file_path, lines.join)
         { status: :disabled }
       else
+        # Normal line - append disable comment
         lines[line_index] = current_line.chomp + " # rubocop:disable #{offense.cop_name}\n"
         File.write(offense.file_path, lines.join)
         { status: :disabled }

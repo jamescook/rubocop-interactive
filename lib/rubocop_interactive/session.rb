@@ -169,8 +169,9 @@ module RubocopInteractive
           # Clamp index to valid range (in case we removed more than we added)
           index = [index, @all_offenses.size - 1].min
 
-          # If correction was skipped (no change), move to next offense to avoid infinite loop
-          if result[:status] == :skipped
+          # For disable and skip, move to next offense (avoid infinite loop on same offense)
+          # For autocorrect, stay on same index since the offense list changed
+          if result[:status] == :disabled || result[:status] == :skipped
             if index >= @all_offenses.size - 1
               @ui.show_stats(@stats)
               return @stats
