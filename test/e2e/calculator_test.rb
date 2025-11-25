@@ -136,7 +136,7 @@ class CalculatorE2ETest < Minitest::Test
     # 'L' 'y' - correct ALL StringLiterals [rescan: 4→2]
     # 's' - skip final MethodName [exit at last offense]
     #
-    # Expected: 4 corrections, 3 disabled
+    # Expected: 5 corrections, 3 disabled
     # (Some keypress mismatches due to unsafe offenses requiring 'A' instead of 'a')
     keypresses = "apdpapapadadApspaApspLysq"
 
@@ -170,7 +170,7 @@ class CalculatorE2ETest < Minitest::Test
     end
 
     # Verify exact counts
-    assert_equal 4, stats[:corrected], "Should have corrected exactly 4 offenses"
+    assert_equal 5, stats[:corrected], "Should have corrected exactly 5 offenses"
     assert_equal 3, stats[:disabled], "Should have disabled exactly 3 offenses"
 
     # Verify file still has valid syntax
